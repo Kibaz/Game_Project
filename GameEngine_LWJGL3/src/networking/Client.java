@@ -1,254 +1,228 @@
 package networking;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
 
-import entities.Player;
-import peerData.PeerPlayerData;
+import inputs.KeyboardHandler;
+import runtime.Main;
 
 public class Client {
 	
-	// Fields
-	private static DatagramSocket socket;
-	/* TCP socket for handling initial connection
-	 * Could also be used for a chat system
-	 */
-	
-	public static PeerClientHandler handler = new PeerClientHandler();
-	
-	private static Thread clientThread;
-	private static boolean connected = false;
-	
+	private static DatagramSocket udpSocket;
 	public static InetAddress serverAddress;
-	public static int port = 8192;
+	public static int serverPort;
+	private static Thread clientThread;
 	
-	public static int ID = 0;
+	// Hold key states
+	private static int prev_w_key_state = GLFW.GLFW_RELEASE;
+	private static int prev_s_key_state = GLFW.GLFW_RELEASE;
+	private static int prev_a_key_state = GLFW.GLFW_RELEASE;
+	private static int prev_d_key_state = GLFW.GLFW_RELEASE;
+	private static int prev_space_key_state = GLFW.GLFW_RELEASE;
 	
-	private static byte[] buffer = new byte[100];
 	
+	private static byte[] buffer = new byte[512];
 	
-	/*
-	 * Establish a connection with the corresponding server
-	 * Send packets to server periodically
-	 * Receive packets from the server periodically
-	 */
-	public static void connect()
+	public static void listen()
 	{
 		try {
-			socket = new DatagramSocket();
+			udpSocket = new DatagramSocket();
 		} catch (SocketException e) {
-			System.err.println("Cannot establish a connection");
 			e.printStackTrace();
 		}
 		
-		if(socket != null)
+		// Do not listen of UDP socket has not been initialised
+		if(udpSocket == null)
 		{
-			connected = true;
+			return;
 		}
 		
+		// run client listening for server information in separate thread
 		clientThread = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
-				/*
-				 * While a connection is established
-				 */
-
-					try {
-						while(connected)
+				try
+				{
+					while(true)
+					{
+						// Configure Datagram packet
+						DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+						// Block whilst waiting for serve response
+						udpSocket.receive(packet);
+						
+						String msg = new String(packet.getData(), 0, packet.getLength());
+						
+						if(msg.startsWith("Position: ") && Main.testEnt != null)
 						{
-							/* Listen for packets from the server */
-							DatagramPacket response = new DatagramPacket(buffer, buffer.length);
-							socket.receive(response);
-							
-							String msg = new String(response.getData(), 0, response.getLength());
-							
-							byte[] data = parseData(response.getLength(),response.getData());
-							
-							/* Determine actions received from server/other clients */
-							if(msg.contains("pressed"))
-							{
-								// Get ID appended to end of message received
-								String[] splitMsg = msg.split(" ");
-								int clientID = Integer.parseInt(splitMsg[splitMsg.length-1]);
-								
-								// Get client by ID
-								if(!handler.getPeers().isEmpty() && handler.getPeers().size() != 0)
-								{	
-									PeerClient peer = handler.getPeers().get(clientID);
-									if(peer.getServerRequests().isEmpty() && peer.getServerRequests().size() == 0)
-									{
-										peer.processRequest(0, msg);
-									}
-									else
-									{
-										/* Shift requests, drop 2nd last request received */
-										peer.processRequest(1, peer.getServerRequests().get(0));
-										peer.processRequest(0, msg);
-									}
-									
-								}
-							}
-							
-							if(msg.contains("released"))
-							{
-								String[] splitMsg = msg.split(" ");
-								int clientID = Integer.parseInt(splitMsg[splitMsg.length-1]);
-								
-								// Get client by ID
-								if(!handler.getPeers().isEmpty() && handler.getPeers().size() != 0)
-								{	
-									PeerClient peer = handler.getPeers().get(clientID);
-									if(peer.getServerRequests().isEmpty() && peer.getServerRequests().size() == 0)
-									{
-										peer.processRequest(0, msg);
-									}
-									else
-									{
-										/* Shift requests, drop 2nd last request received */
-										peer.processRequest(1, peer.getServerRequests().get(0));
-										peer.processRequest(0, msg);
-									}
-									
-								}
-							}
-							
-							/* Store information about current client */
-							if(msg.startsWith("ID"))
-							{
-								ID = Integer.parseInt(msg.split(" ")[1]);
-								PeerClient client = new PeerClient();
-								client.setID(ID);
-								handler.addPeer(ID, client);
-							}
-							
-							if(msg.startsWith("PlayerData"))
-							{
-								PeerPlayerData ppData = new PeerPlayerData(data);
-								if(handler.getPeers().containsKey(ppData.getClientID()))
-								{
-									PeerClient peer = handler.getPeers().get(ppData.getClientID());
-									peer.setPlayerData(ppData);
-									if(peer.getServerRequests().isEmpty() && peer.getServerRequests().size() == 0)
-									{
-										peer.processRequest(0, msg);
-									}
-									else
-									{
-										/* Shift requests, drop 2nd last request received */
-										peer.processRequest(1, peer.getServerRequests().get(0));
-										peer.processRequest(0, msg);
-									}
-								}
-								else
-								{
-									PeerClient peer = new PeerClient();
-									peer.setID(ppData.getClientID());
-									handler.addPeer(ppData.getClientID(), new PeerClient());
-									peer.setPlayerData(ppData);
-									if(peer.getServerRequests().isEmpty() && peer.getServerRequests().size() == 0)
-									{
-										peer.processRequest(0, msg);
-									}
-									else
-									{
-										/* Shift requests, drop 2nd last request received */
-										peer.processRequest(1, peer.getServerRequests().get(0));
-										peer.processRequest(0, msg);
-									}
-								}
-								
-							}
-							
+							String values = msg.split(":")[1];
+							System.out.println(msg);
+							Vector3f position = new Vector3f(Float.parseFloat(values.split(",")[0]),
+									Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
+							float rx = Float.parseFloat(values.split(",")[3]);
+							float ry = Float.parseFloat(values.split(",")[4]);
+							float rz = Float.parseFloat(values.split(",")[5]);
+							Main.testEnt.setPosition(position);
+							Main.testEnt.setRotX(rx);
+							Main.testEnt.setRotY(ry);
+							Main.testEnt.setRotZ(rz);
 						}
 						
-					} catch (IOException e) {
-						e.printStackTrace();
+
 					}
+				}catch (SocketException e)
+				{
+					System.out.println("Client udp socket closed...");
+				}catch (IOException e)
+				{
+					e.printStackTrace();
+				}
+
+
 			}
 			
 		});
 		
+		// Start client thread
 		clientThread.start();
 	}
 	
-	/*
-	 * Parse byte array data into correct length
-	 * Excluding any empty/excess blocks of data
-	 */
-	private static byte[] parseData(int length, byte[] data)
-	{
-		byte[] result = new byte[length];
-		for(int i = 0; i < length; i++)
-		{
-			result[i] = data[i];
-		}
-		
-		return result;
-	}
-	
-	/*
-	 * Check whether the client has already been registered
-	 * in the handler by the current client based on "ID"
-	 */
-	private static boolean alreadyExists(PeerClient peer)
-	{
-		boolean exists = false;
-		for(PeerClient client: handler.getPeers())
-		{
-			if(peer.getID() == client.getID())
-			{
-				exists = true;
-				break;
-			}
-		}
-		
-		return exists;
-	}
-	
-	/*
-	 * Send packets to the server
-	 */
+	// Send data to the server
 	public static void send(byte[] data)
 	{
 		try {
-			DatagramPacket packet = new DatagramPacket(data,data.length,serverAddress,port);
-			socket.send(packet);
+			DatagramPacket packet = new DatagramPacket(data,data.length,serverAddress,serverPort);
+			udpSocket.send(packet);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
-	/*
-	 * Disconnect from the server
-	 */
-	public static void disconnect()
+	// Check for inputs i.e Keyboard presses and Mouse clicks
+	// Send this data to the server accordingly
+	public static void sendInputs()
 	{
-		// Tell the server this client is disconnecting
-		String msg = "Disconnect " + ID;
-		send(msg.getBytes());
-		
-		try {
-			connected = false;
-			socket.close();
-			clientThread.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		// Check for W key Press and Release Events
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
+		{
+			if(prev_w_key_state == GLFW.GLFW_RELEASE)
+			{
+				// send client input
+				send("w key pressed".getBytes());
+			}
+			prev_w_key_state = GLFW.GLFW_PRESS;
 		}
 		
+		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_W))
+		{
+			if(prev_w_key_state == GLFW.GLFW_PRESS)
+			{
+				// send client input
+				send("w key released".getBytes());
+			}
+			prev_w_key_state = GLFW.GLFW_RELEASE;
+		}
+		
+		// Check for S key Press and Release events
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
+		{
+			if(prev_s_key_state == GLFW.GLFW_RELEASE)
+			{
+				// send client input
+				send("s key pressed".getBytes());
+			}
+			prev_s_key_state = GLFW.GLFW_PRESS;
+		}
+		
+		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_S))
+		{
+			if(prev_s_key_state == GLFW.GLFW_PRESS)
+			{
+				// send client input
+				send("s key released".getBytes());
+			}
+			prev_s_key_state = GLFW.GLFW_RELEASE;
+		}
+		
+		// Check for D key Press and Release events
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
+		{
+			if(prev_d_key_state == GLFW.GLFW_RELEASE)
+			{
+				// send client input
+				send("d key pressed".getBytes());
+			}
+			prev_d_key_state = GLFW.GLFW_PRESS;
+		}
+		
+		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_D))
+		{
+			if(prev_d_key_state == GLFW.GLFW_PRESS)
+			{
+				// send client input
+				send("d key released".getBytes());
+			}
+			prev_d_key_state = GLFW.GLFW_RELEASE;
+		}
+		
+		// Check for A key Press and Release events
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
+		{
+			if(prev_a_key_state == GLFW.GLFW_RELEASE)
+			{
+				// send client input
+				send("a key pressed".getBytes());
+			}
+			prev_a_key_state = GLFW.GLFW_PRESS;
+		}
+		
+		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_A))
+		{
+			if(prev_a_key_state == GLFW.GLFW_PRESS)
+			{
+				// send client input
+				send("a key released".getBytes());
+			}
+			prev_a_key_state = GLFW.GLFW_RELEASE;
+		}
+		
+		// Check for SPACE key Press and Release events
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE))
+		{
+			if(prev_space_key_state == GLFW.GLFW_RELEASE)
+			{
+				// send client input
+				send("space key pressed".getBytes());
+			}
+			prev_space_key_state = GLFW.GLFW_PRESS;
+		}
+		
+		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_SPACE))
+		{
+			if(prev_space_key_state == GLFW.GLFW_PRESS)
+			{
+				// send client input
+				send("space key released".getBytes());
+			}
+			prev_space_key_state = GLFW.GLFW_RELEASE;
+		}
 	}
 	
-	
-	
-	
+	public static void diconnect()
+	{
+		udpSocket.close();
+		try {
+			clientThread.join(); // wait for thread to terminate
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 }

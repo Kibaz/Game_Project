@@ -1,12 +1,5 @@
 package entities;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,26 +7,19 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
 
 import inputs.KeyboardHandler;
-import models.BaseModel;
 import models.TexturedModel;
 import networking.Client;
 import physics.AABB;
 import physics.CollisionTest;
 import physics.Ellipsoid;
-import physics.EndPoint;
 import physics.PairManager;
 import physics.Plane;
 import physics.SAP;
 import physics.Utils;
 import rendering.Window;
-import runtime.Main;
 import terrains.Terrain;
-import texturing.ModelTexture;
 import utils.DataTransfer;
-import utils.OBJLoader;
 import water.WaterPlane;
-import water.WaterPlane;
-import worldData.World;
 
 public class Player extends Entity{
 	
@@ -57,13 +43,6 @@ public class Player extends Entity{
 	
 	private boolean airborne = false;
 	private CollisionTest collTest;
-	
-	// Track key states
-	private int prev_W_KEY_state = GLFW.GLFW_RELEASE;
-	private int prev_S_KEY_state = GLFW.GLFW_RELEASE;
-	private int prev_D_KEY_state = GLFW.GLFW_RELEASE;
-	private int prev_A_KEY_state = GLFW.GLFW_RELEASE;
-	private int prev_SPACE_KEY_state = GLFW.GLFW_RELEASE;
 
 	public Player(TexturedModel model, Vector3f position, float rotX, float rotY, float rotZ, float scale) {
 		super(model, position, rotX, rotY, rotZ, scale);
@@ -123,7 +102,7 @@ public class Player extends Entity{
 		}
 
 		
-		// Enusre bounding box is always reset post collision calculations
+		// Ensure bounding box is always reset post collision calculations
 		this.aabb.resetBox(this.getPosition());
 	}
 	
@@ -142,25 +121,11 @@ public class Player extends Entity{
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
 		{
 			this.currentSpeed = ground_speed;
-			if(prev_W_KEY_state == GLFW.GLFW_RELEASE)
-			{
-				/* Send packet to server - client pressed w key */
-				String msg = "w key pressed by client " + Client.ID;
-				Client.send(msg.getBytes());
-			}
-			prev_W_KEY_state = GLFW.GLFW_PRESS;
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
 		{
 			this.currentSpeed = -ground_speed;
-			if(prev_S_KEY_state == GLFW.GLFW_RELEASE)
-			{
-				/* Send packet to server - client pressed w key */
-				String msg = "s key pressed by client " + Client.ID;
-				Client.send(msg.getBytes());
-			}
-			prev_S_KEY_state = GLFW.GLFW_PRESS;
 		}
 		
 		else
@@ -171,25 +136,11 @@ public class Player extends Entity{
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
 		{
 			this.currentTurnSpeed = -TURN_SPEED;
-			if(prev_D_KEY_state == GLFW.GLFW_RELEASE)
-			{
-				/* Send packet to server - client pressed w key */
-				String msg = "d key pressed by client " + Client.ID;
-				Client.send(msg.getBytes());
-			}
-			prev_D_KEY_state = GLFW.GLFW_PRESS;
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
 		{
 			this.currentTurnSpeed = TURN_SPEED;
-			if(prev_A_KEY_state == GLFW.GLFW_RELEASE)
-			{
-				/* Send packet to server - client pressed w key */
-				String msg = "a key pressed by client " + Client.ID;
-				Client.send(msg.getBytes());
-			}
-			prev_A_KEY_state = GLFW.GLFW_PRESS;
 		}
 		else
 		{
@@ -198,59 +149,6 @@ public class Player extends Entity{
 		
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE)){
 			jump();
-			if(prev_SPACE_KEY_state == GLFW.GLFW_RELEASE)
-			{
-				/* Send packet to server - client pressed w key */
-				String msg = " key pressed by client " + Client.ID;
-				Client.send(msg.getBytes());
-			}
-			prev_SPACE_KEY_state = GLFW.GLFW_PRESS;
-		}
-		
-		/* Check whether a key has been released */
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_W) && prev_W_KEY_state == GLFW.GLFW_PRESS)
-		{
-			/* Send packet to server - client released w key */
-			String msg = "w key released by client " + Client.ID;
-			Client.send(msg.getBytes());
-			/* Reset previous state to Key Release */
-			prev_W_KEY_state = GLFW.GLFW_RELEASE;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_S) && prev_S_KEY_state == GLFW.GLFW_PRESS)
-		{
-			/* Send packet from client to server */
-			String msg = "s key released by client " + Client.ID;
-			Client.send(msg.getBytes());
-			/* Reset previous state to Key Release */
-			prev_S_KEY_state = GLFW.GLFW_RELEASE;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_D) && prev_D_KEY_state == GLFW.GLFW_PRESS)
-		{
-			/* Send packet from client to server */
-			String msg = "d key released by client " + Client.ID;
-			Client.send(msg.getBytes());
-			/* Reset previous state to Key Release */
-			prev_D_KEY_state = GLFW.GLFW_RELEASE;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_A) && prev_A_KEY_state == GLFW.GLFW_PRESS)
-		{
-			/* Send packet from client to server */
-			String msg = "a key released by client " + Client.ID;
-			Client.send(msg.getBytes());
-			/* Reset previous state to Key Release */
-			prev_A_KEY_state = GLFW.GLFW_RELEASE;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_SPACE) && prev_SPACE_KEY_state == GLFW.GLFW_PRESS)
-		{
-			/* Send packet from client to server */
-			String msg = "space key released by client " + Client.ID;
-			Client.send(msg.getBytes());
-			/* Reset previous state to Key Release */
-			prev_SPACE_KEY_state = GLFW.GLFW_RELEASE;
 		}
 		
 	}

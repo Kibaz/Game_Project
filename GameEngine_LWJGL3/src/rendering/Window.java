@@ -14,7 +14,6 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import inputs.MouseButton;
 import inputs.MouseCursor;
-import networking.Client;
 
 public class Window {
 	

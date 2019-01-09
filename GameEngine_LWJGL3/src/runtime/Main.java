@@ -2,6 +2,7 @@ package runtime;
 
 import java.io.File;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +17,6 @@ import org.lwjgl.util.vector.Vector4f;
 import animation.AnimMeshLoader;
 import animation.AnimatedCharacter;
 import animation.Animation;
-import animation.Animator;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
@@ -30,7 +30,6 @@ import inputs.MousePicker;
 import models.BaseModel;
 import models.TexturedModel;
 import networking.Client;
-import networking.PeerClient;
 import particles.ParticleGenerator;
 import particles.ParticleManager;
 import particles.ParticleTexture;
@@ -42,7 +41,6 @@ import terrains.Terrain;
 import texturing.CausticTexture;
 import texturing.ModelTexture;
 import utils.OBJLoader;
-import utils.Utils;
 import water.WaterFBO;
 import water.WaterPlane;
 import water.WaterRenderer;
@@ -50,19 +48,16 @@ import water.WaterShader;
 import worldData.World;
 
 public class Main {
+	
+	public static Entity testEnt;
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws UnknownHostException, SocketException {
 		
-		/* Configure and connect client */
-		Client.port = 8192;
-		try {
-			Client.serverAddress = InetAddress.getByName("192.168.1.9");
-		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		Client.connect();
-		Client.send("Connect".getBytes());
+		// Intiailise Client communications program
+		Client.serverAddress = InetAddress.getByName("127.0.0.1"); // Server IP address
+		Client.serverPort = 8129; // Server port
+		// Start listening for responses from the server
+		Client.listen();
 		
 		// Initialise window
 		Window.init();
@@ -102,7 +97,7 @@ public class Main {
 		texture.setReflectivity(1);
 		
 		List<Terrain> terrains = new ArrayList<Terrain>();
-		Terrain terrain = new Terrain(0,0,loader, terrainTex, "heightmap");
+		Terrain terrain = new Terrain(0,0,loader, terrainTex, "gray_heightmap");
 		Terrain terrain2 = new Terrain(1,0,loader,terrainTex, "heightmap");
 		terrains.add(terrain);
 		terrains.add(terrain2);
@@ -116,7 +111,9 @@ public class Main {
 		World.addEntity(boxEnt);
 		
 		Player player = new Player(testtexModel, new Vector3f(100,terrain.getTerrainHeight(100, 90),90),0,0,0,1);
-		System.out.println(player.getPosition());
+		String playerPosStr = "Position:" + player.getPosition().x + "," + player.getPosition().y + "," + player.getPosition().z
+								+ "," + player.getRotX() + "," + player.getRotY() + "," + player.getRotZ();
+		Client.send(playerPosStr.getBytes());
 		//animEntity.addEntity(player);
 		//client.setPlayer(player);
 		
@@ -127,6 +124,7 @@ public class Main {
 		animChar.playCurrentAnimation();
 		animatedChars.add(animChar);
 		
+		// Set up player camera - 3rd person camera
 		Camera camera = new Camera(player);
 		
 		AdvancedRenderer renderer = new AdvancedRenderer(loader, camera);
@@ -235,7 +233,7 @@ public class Main {
 		
 		MousePicker picker = new MousePicker(camera,renderer.getProjectionMatrix(),terrain);
 		
-		Entity testEnt = new Entity(tModel,new Vector3f(100,terrain.getTerrainHeight(100, 90),90),0,0,0,1);
+		testEnt = new Entity(tModel,new Vector3f(100,terrain.getTerrainHeight(100, 90),90),0,0,0,1);
 		entities.add(testEnt);
 		
 		int count = 0;
@@ -243,6 +241,7 @@ public class Main {
 		{
 			/*window.clear();*/
 			player.movePlayer(terrains, water,entities);
+			Client.sendInputs();
 			//waterPlane.update(player);
 			
 			animChar.getAnimator().update();
@@ -258,22 +257,6 @@ public class Main {
 				}else
 				{
 					
-				}
-			}
-			
-			System.out.println(player.getPosition());
-			
-			if(!Client.handler.getPeers().isEmpty())
-			{
-				PeerClient thisClient = Client.handler.getPeers().get(Client.ID);
-				testEnt.setPosition(thisClient.getPlayerData().getPosition());
-				if(thisClient.getServerRequests().get(0).contains("released"))
-				{
-					//player.getPosition().x = thisClient.getPlayerData().getPosition().x;
-					//player.getPosition().z = thisClient.getPlayerData().getPosition().z;
-					//player.setRotX(thisClient.getPlayerData().getRotX());
-					//player.setRotY(thisClient.getPlayerData().getRotY());
-					//player.setRotZ(thisClient.getPlayerData().getRotZ());
 				}
 			}
 			
@@ -334,7 +317,6 @@ public class Main {
 			Window.update();;
 		}
 		
-		Client.disconnect();
 		ParticleManager.cleanUp();
 		TextController.cleanUp();
 		waterFBOS.cleanUp();
@@ -342,6 +324,7 @@ public class Main {
 		renderer.cleanUp();
 		loader.cleanUp();
 		Window.destroy();
+		Client.diconnect();
 
 	}
 
