@@ -9,6 +9,7 @@ public class World {
 	
 	public static List<Entity> worldObjects = new ArrayList<>();
 	
+	
 	public static void addEntity(Entity entity)
 	{
 		worldObjects.add(entity);

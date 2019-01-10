@@ -45,6 +45,7 @@ import water.WaterFBO;
 import water.WaterPlane;
 import water.WaterRenderer;
 import water.WaterShader;
+import worldData.TigranStartZone;
 import worldData.World;
 
 public class Main {
@@ -53,7 +54,16 @@ public class Main {
 
 	public static void main(String[] args) throws UnknownHostException, SocketException {
 		
-		// Intiailise Client communications program
+		// Initialise lists of terrains, entities, animated characters, lights etc...
+		List<Terrain> terrains = new ArrayList<>(); // Terrains
+		List<Light> lights = new ArrayList<>(); // Lights
+		List<AnimatedCharacter> animatedChars = new ArrayList<>(); // Animated characters
+		List<Entity> entities = new ArrayList<>(); // Entities
+		List<WaterPlane> water = new ArrayList<>(); // Any water?
+		List<GUITexture> guis = new ArrayList<>(); // Store GUIs
+		
+		
+		// Initialise Client communications program
 		Client.serverAddress = InetAddress.getByName("127.0.0.1"); // Server IP address
 		Client.serverPort = 8129; // Server port
 		// Start listening for responses from the server
@@ -62,20 +72,28 @@ public class Main {
 		// Initialise window
 		Window.init();
 		
+		// Initialise loader for the game
+		/*
+		 * The Loader will handle loading 
+		 * physical models, graphics, 
+		 * text etc...
+		 */
 		Loader loader = new Loader();
 		
+		// Initialise Font Handler
 		TextController.init(loader);
 		
-		FontStyle font = new FontStyle(loader.decodePNGTexture("res/calibri.png", 0), new File("res/calibri.fnt"));
-		GUIText text = new GUIText("Test text", 1, font, new Vector2f(0.5f,0.5f), 0.5f, true);
-		text.setColour(1, 0, 0);
+		// Initialise and create zones
+		// Add game objects stored in each zone to prepare for rendering
+		TigranStartZone tigranStartZone = new TigranStartZone(loader);
+		terrains.addAll(tigranStartZone.getTerrains());
+		lights.addAll(tigranStartZone.getLights());
+		entities.addAll(tigranStartZone.getEntities());
+		water.addAll(tigranStartZone.getWater());
 		
+		/* Test loading an animated character */
 		BaseModel[] testModels = null;
 		
-		ModelTexture texture = new ModelTexture(loader.loadTexture("res/green.png"));
-		
-		// Store all animated entities to be rendered
-		List<AnimatedCharacter> animatedChars = new ArrayList<>();
 		Animation animation = null;
 		try {
 			animation = AnimMeshLoader.loadAnimation("res/model.dae", loader);
@@ -85,37 +103,13 @@ public class Main {
 		
 		testModels = animation.getModels();
 		
-		ModelTexture testTex = new ModelTexture(loader.loadTexture("res/Character Texture.png"));
-		TexturedModel testtexModel = new TexturedModel(testModels[0], testTex);
+		ModelTexture playerTex = new ModelTexture(loader.loadTexture("res/Character Texture.png"));
+		TexturedModel playerTexMod = new TexturedModel(testModels[0], playerTex);
 		
-		ModelTexture terrainTex = new ModelTexture(loader.loadTexture("res/Brown.png"));
-		
-		terrainTex.setShineDamper(1);
-		terrainTex.setReflectivity(0);
-		
-		texture.setShineDamper(10);
-		texture.setReflectivity(1);
-		
-		List<Terrain> terrains = new ArrayList<Terrain>();
-		Terrain terrain = new Terrain(0,0,loader, terrainTex, "gray_heightmap");
-		Terrain terrain2 = new Terrain(1,0,loader,terrainTex, "heightmap");
-		terrains.add(terrain);
-		terrains.add(terrain2);
-		
-		// Box jumping test
-		BaseModel box = OBJLoader.loadObj("cube", loader);
-		ModelTexture boxTex = new ModelTexture(loader.loadTexture("res/green.png"));
-		TexturedModel boxMod = new TexturedModel(box, boxTex);
-		Entity boxEnt = new Entity(boxMod, new Vector3f(200,terrain.getTerrainHeight(200, 200),200),0,0,0,18);
-		boxEnt.setStaticModel(true);
-		World.addEntity(boxEnt);
-		
-		Player player = new Player(testtexModel, new Vector3f(100,terrain.getTerrainHeight(100, 90),90),0,0,0,1);
+		Player player = new Player(playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
 		String playerPosStr = "Position:" + player.getPosition().x + "," + player.getPosition().y + "," + player.getPosition().z
 								+ "," + player.getRotX() + "," + player.getRotY() + "," + player.getRotZ();
 		Client.send(playerPosStr.getBytes());
-		//animEntity.addEntity(player);
-		//client.setPlayer(player);
 		
 		/* New code for setting up a single animated character */
 		AnimatedCharacter animChar = new AnimatedCharacter(player);
@@ -131,71 +125,7 @@ public class Main {
 		
 		ParticleManager.init(loader, renderer.getProjectionMatrix());
 		
-		BaseModel model = OBJLoader.loadObj("LowPolyTree", loader);
-		List<Light> lights = new ArrayList<>();
-		Light sun = new Light(new Vector3f(10000,15000,-10000), new Vector3f(1.3f,1.3f,1.3f));
-		Light light1 = new Light(new Vector3f(200,10,300), new Vector3f(10,0,0), new Vector3f(1, 0.01f, 0.002f));
-		Light light2 = new Light(new Vector3f(200,10,200), new Vector3f(0,0,10), new Vector3f(1, 0.01f, 0.002f));
-		lights.add(sun);
-		//lights.add(light1);
-		//lights.add(light2);
-		/*try {
-			testModels = StaticModelLoader.load("res/LowPolyTree.obj", loader);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}*/
-		
-		ModelTexture fernTextureAtlas = new ModelTexture(loader.loadTexture("res/fern.png"));
-		fernTextureAtlas.setHasTransparency(true);
-		fernTextureAtlas.setUseFakeLighting(true);
-		fernTextureAtlas.setNumberOfRows(2);
-		
-		TexturedModel fern = new TexturedModel(OBJLoader.loadObj("fern", loader), fernTextureAtlas);
-		
-		List<Entity> entities = new ArrayList<Entity>();
-		Random random = new Random();
-		for(int i = 0; i < 400; i++)
-		{
-			if(i % 2 == 0)
-			{
-				float x = random.nextFloat() * 800 - 400;
-				float z = random.nextFloat() * 400;
-				float y = terrain.getTerrainHeight(x, z);
-				
-				entities.add(new Entity(fern, random.nextInt(4), new Vector3f(x,y,z),0, random.nextFloat(), 0, 0.9f));
-			}
-		}
-		
-		TexturedModel tModel = new TexturedModel(model, texture);
-				
-		Entity treeEnt = new Entity(tModel, new Vector3f(90, terrain.getTerrainHeight(90, 70), 70), 0, 0, 0,1);
-		treeEnt.setClickable(true);
-		entities.add(treeEnt);
-		treeEnt.setStaticModel(true);
-		World.addEntity(treeEnt);
-		World.addEntity(player);
-		
-		entities.add(boxEnt);
-		
-		/*for(int i = 0; i < 400; i++)
-		{
-			if(i % 2 == 0)
-			{
-				float x = random.nextFloat() * 300;
-				float z = random.nextFloat() * 400;
-				float y = terrain.getTerrainHeight(x, z);
-				
-				Entity entity = new Entity(tModel, random.nextInt(4), new Vector3f(x,y,z),0, random.nextFloat(), 0, 0.9f);
-				entity.setStaticModel(true);
-				entities.add(entity);
-				World.addEntity(entity);
-			}
-		}*/
-		
-		
-		List<GUITexture> guis = new ArrayList<GUITexture>();
 		GUITexture gui = new GUITexture(renderer.getShadowMapTexture(), new Vector2f(0.5f, 0.5f), new Vector2f(0.25f, 0.25f));
-		//guis.add(gui);
 		
 		GUIRenderer guiRenderer = new GUIRenderer(loader);
 		
@@ -203,40 +133,11 @@ public class Main {
 		
 		WaterShader waterShader = new WaterShader();
 		WaterRenderer waterRenderer = new WaterRenderer(loader, waterShader, renderer.getProjectionMatrix(), waterFBOS);
-		List<WaterPlane> water = new ArrayList<>();
-		WaterPlane waterPlane = new WaterPlane(loader,40,40,-7);
-		for(int i = 0; i < waterPlane.getCausticTextures().length; i++)
-		{
-			int temp = i + 1;
-			if(temp / 10 == 0)
-			{
-				waterPlane.setCausticTextures(i, new CausticTexture(loader.loadTexture("res/test_caustic_00"+temp+".bmp")));
-			}else
-			{
-				waterPlane.setCausticTextures(i, new CausticTexture(loader.loadTexture("res/test_caustic_0"+temp+".bmp")));
-			}
-		}
-		water.add(waterPlane);
-		terrain.setCausticTexture(waterPlane.getCausticTextures()[0]);
-		terrain2.setCausticTexture(waterPlane.getCausticTextures()[0]);
 		
 		
-		ParticleTexture partTexture = new ParticleTexture(loader.loadTexture("res/cosmic.png"),4, false);
-		
-		ParticleGenerator partGen = new ParticleGenerator(partTexture,40, 10, 0.1f, 1, 1.6f);
-		partGen.setLifeError(0.1f);
-		partGen.setSpeedError(0.25f);
-		partGen.setScaleError(0.5f);
-		partGen.randomizeRotation();
-		
+		// Initialising physics
 		SAP sap = new SAP();
 		
-		MousePicker picker = new MousePicker(camera,renderer.getProjectionMatrix(),terrain);
-		
-		testEnt = new Entity(tModel,new Vector3f(100,terrain.getTerrainHeight(100, 90),90),0,0,0,1);
-		entities.add(testEnt);
-		
-		int count = 0;
 		while(!Window.closed())
 		{
 			/*window.clear();*/
@@ -246,26 +147,9 @@ public class Main {
 			
 			animChar.getAnimator().update();
 			sap.update();
-			picker.update(player);
 			camera.move();
 			
-			if(picker.getCurrentTerrainPoint() != null)
-			{
-				if(picker.getCurrentHoveredEntity() != null)
-				{
-					picker.getCurrentHoveredEntity().setPosition(picker.getCurrentTerrainPoint());
-				}else
-				{
-					
-				}
-			}
-			
-			
-			partGen.generateParticles(player.getPosition());
-			
-			ParticleManager.update(camera);
-			
-			renderer.renderShadowMap(entities, sun);
+			renderer.renderShadowMap(entities, tigranStartZone.getSun());
 			GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
 			
 			if(water.get(0).isCameraUnderWater(camera))
@@ -308,7 +192,7 @@ public class Main {
 			// render to the display, i.e default frame buffer
 			GL11.glDisable(GL30.GL_CLIP_DISTANCE0);
 			renderer.renderScene(entities, terrains, animatedChars, lights, camera, new Vector4f(0,-1,0,0));
-			waterRenderer.render(water, camera, sun, renderer.getNearPlane(), renderer.getFarPlane());
+			waterRenderer.render(water, camera, tigranStartZone.getSun(), renderer.getNearPlane(), renderer.getFarPlane());
 			
 			ParticleManager.render(camera);
 			
@@ -317,8 +201,7 @@ public class Main {
 			Window.update();;
 		}
 		
-		ParticleManager.cleanUp();
-		TextController.cleanUp();
+		// Clean up all rendering, processing etc...
 		waterFBOS.cleanUp();
 		waterShader.cleanUp();
 		renderer.cleanUp();
