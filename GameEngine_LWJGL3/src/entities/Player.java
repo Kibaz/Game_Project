@@ -8,7 +8,6 @@ import org.lwjgl.util.vector.Vector3f;
 
 import inputs.KeyboardHandler;
 import models.TexturedModel;
-import networking.Client;
 import physics.AABB;
 import physics.CollisionTest;
 import physics.Ellipsoid;
@@ -20,6 +19,8 @@ import rendering.Window;
 import terrains.Terrain;
 import utils.DataTransfer;
 import water.WaterPlane;
+import worldData.World;
+import worldData.Zone;
 
 public class Player extends Entity{
 	
@@ -43,6 +44,9 @@ public class Player extends Entity{
 	
 	private boolean airborne = false;
 	private CollisionTest collTest;
+	
+	// Location variables
+	private Zone currentZone;
 
 	public Player(TexturedModel model, Vector3f position, float rotX, float rotY, float rotZ, float scale) {
 		super(model, position, rotX, rotY, rotZ, scale);
@@ -91,6 +95,16 @@ public class Player extends Entity{
 			if(model.isPlayerInWater(this))
 			{
 				
+			}
+		}
+		
+		// Determine the zone which the player is currently in
+		for(String name: World.zones.keySet())
+		{
+			Zone curr = World.zones.get(name);
+			if(curr.isPlayerInZone(this))
+			{
+				currentZone = curr;
 			}
 		}
 		
@@ -153,6 +167,14 @@ public class Player extends Entity{
 		
 	}
 	
+	public Zone getCurrentZone() {
+		return currentZone;
+	}
+
+	public void setCurrentZone(Zone currentZone) {
+		this.currentZone = currentZone;
+	}
+
 	public AABB getAABB()
 	{
 		return aabb;

@@ -17,6 +17,7 @@ import inputs.MouseCursor;
 
 public class Window {
 	
+	// Instantiate GLFW callbacks
 	private GLFWErrorCallback errorCallback;
 	private static GLFWCursorPosCallback cursorCallback;
 	private static GLFWMouseButtonCallback mouseButtonCallback;

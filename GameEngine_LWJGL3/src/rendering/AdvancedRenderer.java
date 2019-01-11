@@ -9,8 +9,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector4f;
-
-import animation.AnimEntity;
 import animation.AnimatedCharacter;
 import entities.Camera;
 import entities.Entity;
@@ -22,7 +20,6 @@ import shaders.TerrainShader;
 import shadowMapping.ShadowRenderer;
 import skybox.SkyboxRenderer;
 import terrains.Terrain;
-import water.WaterPlane;
 
 public class AdvancedRenderer {
 	

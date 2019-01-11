@@ -1,13 +1,10 @@
 package runtime;
 
-import java.io.File;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Vector2f;
@@ -22,25 +19,18 @@ import entities.Entity;
 import entities.Light;
 import entities.Player;
 import fontRendering.TextController;
-import fontUtils.FontStyle;
-import fontUtils.GUIText;
 import guis.GUIRenderer;
 import guis.GUITexture;
-import inputs.MousePicker;
 import models.BaseModel;
 import models.TexturedModel;
 import networking.Client;
-import particles.ParticleGenerator;
 import particles.ParticleManager;
-import particles.ParticleTexture;
 import physics.SAP;
 import rendering.AdvancedRenderer;
 import rendering.Loader;
 import rendering.Window;
 import terrains.Terrain;
-import texturing.CausticTexture;
 import texturing.ModelTexture;
-import utils.OBJLoader;
 import water.WaterFBO;
 import water.WaterPlane;
 import water.WaterRenderer;
@@ -90,6 +80,7 @@ public class Main {
 		lights.addAll(tigranStartZone.getLights());
 		entities.addAll(tigranStartZone.getEntities());
 		water.addAll(tigranStartZone.getWater());
+		World.addZone(tigranStartZone.getName(), tigranStartZone);
 		
 		/* Test loading an animated character */
 		BaseModel[] testModels = null;
@@ -110,6 +101,7 @@ public class Main {
 		String playerPosStr = "Position:" + player.getPosition().x + "," + player.getPosition().y + "," + player.getPosition().z
 								+ "," + player.getRotX() + "," + player.getRotY() + "," + player.getRotZ();
 		Client.send(playerPosStr.getBytes());
+		World.addEntity(player);
 		
 		/* New code for setting up a single animated character */
 		AnimatedCharacter animChar = new AnimatedCharacter(player);
@@ -144,6 +136,8 @@ public class Main {
 			player.movePlayer(terrains, water,entities);
 			Client.sendInputs();
 			//waterPlane.update(player);
+			
+			System.out.println(player.getPosition());
 			
 			animChar.getAnimator().update();
 			sap.update();
