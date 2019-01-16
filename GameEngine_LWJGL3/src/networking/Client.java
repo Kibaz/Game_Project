@@ -11,14 +11,34 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
 
 import inputs.KeyboardHandler;
+import rendering.Window;
 import runtime.Main;
 
 public class Client {
+	
+	// Store client and server synchronisation time for updates
+	// This will calculate latency adjustments as well
+	private static float time = 0;
+	private static float currentUpdateTime = 0;
+	private static float prevUpdateTime = 0;
 	
 	private static DatagramSocket udpSocket;
 	public static InetAddress serverAddress;
 	public static int serverPort;
 	private static Thread clientThread;
+	
+	// Store previous and current player positions received from server
+	// Use this data to implement entity interpolation
+	private static Vector3f previousPlayerPosition;
+	private static Vector3f currentPlayerPosition;
+	
+	private static float prevPlayerRX;
+	private static float prevPlayerRY;
+	private static float prevPlayerRZ;
+	
+	private static float currentPlayerRX;
+	private static float currentPlayerRY;
+	private static float currentPlayerRZ;
 	
 	// Hold key states
 	private static int prev_w_key_state = GLFW.GLFW_RELEASE;
@@ -60,19 +80,26 @@ public class Client {
 						
 						String msg = new String(packet.getData(), 0, packet.getLength());
 						
-						if(msg.startsWith("Position: ") && Main.testEnt != null)
+						if(msg.startsWith("Position: "))
 						{
+							if(currentUpdateTime != 0)
+							{
+								prevUpdateTime = currentUpdateTime;
+							}
+							currentUpdateTime = time;
 							String values = msg.split(":")[1];
-							System.out.println(msg);
-							Vector3f position = new Vector3f(Float.parseFloat(values.split(",")[0]),
+							if(currentPlayerPosition != null)
+							{
+								previousPlayerPosition = currentPlayerPosition;
+								prevPlayerRX = currentPlayerRX;
+								prevPlayerRY = currentPlayerRY;
+								prevPlayerRZ = currentPlayerRZ;
+							}
+							currentPlayerPosition = new Vector3f(Float.parseFloat(values.split(",")[0]),
 									Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
-							float rx = Float.parseFloat(values.split(",")[3]);
-							float ry = Float.parseFloat(values.split(",")[4]);
-							float rz = Float.parseFloat(values.split(",")[5]);
-							Main.testEnt.setPosition(position);
-							Main.testEnt.setRotX(rx);
-							Main.testEnt.setRotY(ry);
-							Main.testEnt.setRotZ(rz);
+							currentPlayerRX = Float.parseFloat(values.split(",")[3]);
+							currentPlayerRY = Float.parseFloat(values.split(",")[4]);
+							currentPlayerRZ = Float.parseFloat(values.split(",")[5]);
 						}
 						
 
@@ -199,7 +226,7 @@ public class Client {
 			if(prev_space_key_state == GLFW.GLFW_RELEASE)
 			{
 				// send client input
-				send("space key pressed".getBytes());
+				send(" key pressed".getBytes());
 			}
 			prev_space_key_state = GLFW.GLFW_PRESS;
 		}
@@ -209,13 +236,13 @@ public class Client {
 			if(prev_space_key_state == GLFW.GLFW_PRESS)
 			{
 				// send client input
-				send("space key released".getBytes());
+				send(" key released".getBytes());
 			}
 			prev_space_key_state = GLFW.GLFW_RELEASE;
 		}
 	}
 	
-	public static void diconnect()
+	public static void disconnect()
 	{
 		udpSocket.close();
 		try {
@@ -224,5 +251,68 @@ public class Client {
 			e.printStackTrace();
 		}
 	}
+
+	// Getters and Setters
+	
+
+	public static Vector3f getCurrentPlayerPosition() {
+		return currentPlayerPosition;
+	}
+
+	public static float getPrevPlayerRX() {
+		return prevPlayerRX;
+	}
+
+	public static float getPrevPlayerRY() {
+		return prevPlayerRY;
+	}
+
+	public static float getPrevPlayerRZ() {
+		return prevPlayerRZ;
+	}
+
+	public static float getCurrentPlayerRX() {
+		return currentPlayerRX;
+	}
+
+	public static float getCurrentPlayerRY() {
+		return currentPlayerRY;
+	}
+
+	public static float getCurrentPlayerRZ() {
+		return currentPlayerRZ;
+	}
+
+	public static Vector3f getPreviousPlayerPosition() {
+		return previousPlayerPosition;
+	}
+
+	public static void setPreviousPlayerPosition(Vector3f previousPlayerPosition) {
+		Client.previousPlayerPosition = previousPlayerPosition;
+	}
+	
+	public static float getUpdateTime()
+	{
+		return currentUpdateTime - prevUpdateTime;
+	}
+
+	/*
+	 * Use this method to update the 
+	 * "updateTime" interval
+	 */
+	
+	public static void increaseUpdateTime()
+	{
+		time += Window.getFrameTime();
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
 
 }

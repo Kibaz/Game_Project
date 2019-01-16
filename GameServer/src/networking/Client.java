@@ -2,11 +2,13 @@ package networking;
 
 import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.lwjgl.util.vector.Vector3f;
 
 import entityData.PlayerData;
+import terrains.Terrain;
 
 public class Client {
 	
@@ -23,25 +25,43 @@ public class Client {
 	
 	private PlayerData playerData;
 	
-	public Client(int id, InetAddress address, int port)
+	public Client(int id, InetAddress address, int port, Terrain terrain)
 	{
 		this.ID = id;
 		this.address = address;
 		this.port = port;
 		keyInputs = new HashMap<>();
 		fillKeyInputs();
-		playerData = new PlayerData(new Vector3f(100,0,90),0,0,0,1);
+		playerData = new PlayerData(new Vector3f(100,terrain.getTerrainHeight(100, 90),90),0,0,0,1);
 	}
 	
 	// Update the client's player data
-	public void movePlayer()
+	public void movePlayer(List<Terrain> terrains, float time)
 	{
 		checkKeyInputs();
-		playerData.increaseRotation(0, playerData.getCurrentTurnSpeed() * Server.getDeltaTime(), 0);
-		float distance = playerData.getCurrentSpeed() * Server.getDeltaTime();
+		playerData.increaseRotation(0, playerData.getCurrentTurnSpeed() * time, 0);
+		float distance = playerData.getCurrentSpeed() * time;
 		float distX = (float) (distance * Math.sin(Math.toRadians(playerData.getRotY())));
 		float distZ = (float) (distance * Math.cos(Math.toRadians(playerData.getRotY())));
 		playerData.increasePosition(distX, 0, distZ);
+		playerData.increaseJumpSpeed(PlayerData.GRAVITY * time);
+		float distY = playerData.getJumpSpeed() * time;
+		playerData.increasePosition(0, distY, 0);
+		
+		for(Terrain terrain: terrains)
+		{
+			if(terrain.isPlayerOnTerrain(playerData))
+			{
+				float terrainHeight = terrain.getTerrainHeight(playerData.getPosition().x, playerData.getPosition().z);
+				if(playerData.getPosition().y < terrainHeight)
+				{
+					playerData.setJumpSpeed(0);
+					distY = terrainHeight - playerData.getPosition().y;
+					playerData.getPosition().y = terrainHeight;
+					playerData.setAirborne(false);
+				}
+			}
+		}
 	}
 	
 	public void checkKeyInputs()
@@ -72,6 +92,20 @@ public class Client {
 		else
 		{
 			playerData.setCurrentTurnSpeed(0);
+		}
+		
+		if(keyInputs.get(' ') == KEY_PRESSED)
+		{
+			jump();
+		}
+	}
+	
+	private void jump()
+	{
+		if(!playerData.isAirborne())
+		{
+			playerData.setJumpSpeed(PlayerData.UP_FORCE);
+			playerData.setAirborne(true);
 		}
 	}
 	

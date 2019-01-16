@@ -98,6 +98,11 @@ public class PlayerData {
 		this.currentSpeed = currentSpeed;
 	}
 
+	public void increaseJumpSpeed(float jumpSpeed)
+	{
+		this.jumpSpeed += jumpSpeed;
+	}
+	
 	public float getJumpSpeed() {
 		return jumpSpeed;
 	}

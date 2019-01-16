@@ -97,10 +97,14 @@ public class Main {
 		ModelTexture playerTex = new ModelTexture(loader.loadTexture("res/Character Texture.png"));
 		TexturedModel playerTexMod = new TexturedModel(testModels[0], playerTex);
 		
+		testEnt = new Entity(playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
+		entities.add(testEnt);
+		
 		Player player = new Player(playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
 		String playerPosStr = "Position:" + player.getPosition().x + "," + player.getPosition().y + "," + player.getPosition().z
 								+ "," + player.getRotX() + "," + player.getRotY() + "," + player.getRotZ();
 		Client.send(playerPosStr.getBytes());
+		Client.setPreviousPlayerPosition(player.getPosition());
 		World.addEntity(player);
 		
 		/* New code for setting up a single animated character */
@@ -133,14 +137,30 @@ public class Main {
 		while(!Window.closed())
 		{
 			/*window.clear();*/
-			player.movePlayer(terrains, water,entities);
+			
+			// Testing client side prediction
+			//player.movePlayer(terrains, water, entities);
+			player.predictMovement(terrains);
+			if(Client.getCurrentPlayerPosition() != null)
+			{
+				testEnt.setPosition(Client.getCurrentPlayerPosition());
+				testEnt.setRotX(Client.getCurrentPlayerRX());
+				testEnt.setRotY(Client.getCurrentPlayerRY());
+				testEnt.setRotZ(Client.getCurrentPlayerRZ());
+			}
+			
+			// Send input from the client to the server
 			Client.sendInputs();
+			Client.increaseUpdateTime();
 			//waterPlane.update(player);
 			
-			System.out.println(player.getPosition());
-			
+			// Carry out animations
 			animChar.getAnimator().update();
+			
+			// Carry out physics engine
 			sap.update();
+			
+			// Calculate camera movement based on player
 			camera.move();
 			
 			renderer.renderShadowMap(entities, tigranStartZone.getSun());
@@ -201,7 +221,7 @@ public class Main {
 		renderer.cleanUp();
 		loader.cleanUp();
 		Window.destroy();
-		Client.diconnect();
+		Client.disconnect();
 
 	}
 

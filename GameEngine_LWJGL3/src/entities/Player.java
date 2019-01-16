@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
-
 import inputs.KeyboardHandler;
 import models.TexturedModel;
+import networking.Client;
 import physics.AABB;
 import physics.CollisionTest;
 import physics.Ellipsoid;
@@ -308,68 +308,86 @@ public class Player extends Entity{
 		}
 	}
 	
-	// Useful methods
-	public String positionToString()
+	/*
+	 * Entity interpolation for smoothly correcting player's
+	 * position relative to the data received by the server
+	 * Interpolation carried over rotation values as well
+	 */
+	public void interpolatePlayer()
 	{
-		String result = "";
-		
-		result = this.getPosition().x + ", " + this.getPosition().y + ", " + this.getPosition().z
-				+ ", "  + this.getRotX() + ", " + this.getRotY() + ", " + this.getRotZ();
-		
-		return result;
+		interpolatePosition(Client.getPreviousPlayerPosition(), Client.getCurrentPlayerPosition());
+		interpolateRotation(Client.getPrevPlayerRX(), Client.getPrevPlayerRY(), Client.getPrevPlayerRZ(),
+							Client.getCurrentPlayerRX(),Client.getCurrentPlayerRY(), Client.getCurrentPlayerRZ());
 	}
 	
-	/*
-	 *  Converting necessary data to bytes to prepare
-	 *  for sending across the network to the server
-	 *  via datagram packets (UDP Protocol)
-	 */
-	
-	public byte[] getPlayerData()
-	{
-		byte[] data = null;
-		
-		List<byte[]> byteArrays = new ArrayList<byte[]>();
-		
-		/*
-		 * Convert all positional and rotational data using ByteBuffer class
-		 */
-		byte[] header = "PlayerData".getBytes();
-		byte[] xPos = DataTransfer.floatToBytes(this.getPosition().x);
-		byte[] yPos = DataTransfer.floatToBytes(this.getPosition().y);
-		byte[] zPos = DataTransfer.floatToBytes(this.getPosition().z);
-		byte[] xRot = DataTransfer.floatToBytes(this.getRotX());
-		byte[] yRot = DataTransfer.floatToBytes(this.getRotY());
-		byte[] zRot = DataTransfer.floatToBytes(this.getRotZ());
-		
-		// Converting model data
-		byte[] modelData = DataTransfer.integerToBytes(this.getModel().getBaseModel().getVaoID());
-		
-		byteArrays.add(header);
-		byteArrays.add(xPos);
-		byteArrays.add(yPos);
-		byteArrays.add(zPos);
-		byteArrays.add(xRot);
-		byteArrays.add(yRot);
-		byteArrays.add(zRot);
-		byteArrays.add(modelData);
-		
-		int length = header.length + xPos.length + yPos.length + zPos.length + 
-				xRot.length + yRot.length + zRot.length + modelData.length;
-		
-		// finalise data
-		data = new byte[length];
-		int index = 0;
-		for(int i = 0; i < byteArrays.size(); i++)
+	// Interpolate position
+	private void interpolatePosition(Vector3f prevPosition, Vector3f nextPos)
+	{	
+		if(nextPos == null || Client.getUpdateTime() == 0)
 		{
-			for(int j = 0; j < byteArrays.get(i).length; j++)
-			{
-				data[index] = byteArrays.get(i)[j];
-				index++;
-			}
+			return;
+		}
+		Vector3f diffPos = Vector3f.sub(nextPos, prevPosition, null);
+		float velX = diffPos.x / Client.getUpdateTime();
+		float velY = diffPos.y / Client.getUpdateTime();
+		float velZ = diffPos.z / Client.getUpdateTime();
+		
+		float dx = velX * Window.getFrameTime();
+		float dy = velY * Window.getFrameTime();
+		float dz = velZ * Window.getFrameTime();
+		
+		increasePosition(dx,dy,dz);
+		
+	}
+	
+	// Interpolate rotation
+	private void interpolateRotation(float prevRotX, float prevRotY, float prevRotZ,
+									float nextRotX, float nextRotY, float nextRotZ)
+	{
+		if(Client.getCurrentPlayerPosition() == null || Client.getUpdateTime() == 0)
+		{
+			return;
 		}
 		
-		return data;
+		float diffX = nextRotX - prevRotX;
+		float diffY = nextRotY - prevRotY;
+		float diffZ = nextRotZ - prevRotZ;
+		
+		float rx = (diffX / Client.getUpdateTime()) * Window.getFrameTime();
+		float ry = (diffY / Client.getUpdateTime()) * Window.getFrameTime();
+		float rz = (diffZ / Client.getUpdateTime()) * Window.getFrameTime();
+		
+		increaseRotation(rx,ry,rz);
 	}
+	
+	public void predictMovement(List<Terrain> terrains)
+	{
+		checkUserInput();
+		super.increaseRotation(0, currentTurnSpeed * Window.getFrameTime(), 0);
+		float distance = currentSpeed * Window.getFrameTime();
+		float distX = (float) (distance * Math.sin(Math.toRadians(super.getRotY())));
+		float distZ = (float) (distance * Math.cos(Math.toRadians(super.getRotY())));
+		super.increasePosition(distX, 0, distZ);
+		jumpSpeed += GRAVITY * Window.getFrameTime();
+		float distY = jumpSpeed * Window.getFrameTime();
+		super.increasePosition(0, distY, 0);
+		
+		for(Terrain terrain: terrains)
+		{
+			if(terrain.isPlayerOnTerrain(this))
+			{
+				float terrainHeight = terrain.getTerrainHeight(super.getPosition().x, super.getPosition().z);
+				if(super.getPosition().y < terrainHeight)
+				{
+					jumpSpeed = 0;
+					distY = terrainHeight - super.getPosition().y;
+					super.getPosition().y = terrainHeight;
+					airborne = false;
+				}
+			}
+		}
+	}
+	
+
 
 }
