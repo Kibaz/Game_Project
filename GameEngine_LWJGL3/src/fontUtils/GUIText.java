@@ -98,6 +98,12 @@ public class GUIText {
 	public boolean isCentered() {
 		return centered;
 	}
+
+	public void setContent(String content) {
+		this.content = content;
+	}
+	
+	
 	
 	
 	

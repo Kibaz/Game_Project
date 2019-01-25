@@ -1,13 +1,22 @@
 package entities;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
+
+import fontRendering.TextController;
+import fontUtils.FontStyle;
+import fontUtils.GUIText;
+import guis.GUITexture;
 import inputs.KeyboardHandler;
+import inputs.MouseButton;
 import models.TexturedModel;
 import networking.Client;
+import pathfinding.GridSquare;
 import physics.AABB;
 import physics.CollisionTest;
 import physics.Ellipsoid;
@@ -15,6 +24,7 @@ import physics.PairManager;
 import physics.Plane;
 import physics.SAP;
 import physics.Utils;
+import rendering.Loader;
 import rendering.Window;
 import terrains.Terrain;
 import utils.DataTransfer;
@@ -28,6 +38,14 @@ public class Player extends Entity{
 	private static final float TURN_SPEED = 160;
 	private static final float GRAVITY = -50;
 	private static final float UP_FORCE = 27;
+	
+	// Player combat variables
+	private float maxHealth = 100;
+	private float currentHealth = maxHealth;
+	private GUITexture healthBar;
+	private FontStyle healthTextStyle;
+	private GUIText healthInfo;
+	
 	
 	// player movement variables
 	private float ground_speed = 20;
@@ -43,22 +61,35 @@ public class Player extends Entity{
 	private Vector3f velocityVector = new Vector3f(0,0,0);
 	
 	private boolean airborne = false;
+	private boolean inCombat = false;
 	private CollisionTest collTest;
+	
+	// Combat variables
+	private float baseDamage = 10;
+	private float attackSpeed = 1; // I.E time between auto attacks
+	private float autoAttackTime = 0; // Track time between auto attacks 
+	
+	private Entity currentSelectedEntity;
 	
 	// Location variables
 	private Zone currentZone;
 
-	public Player(TexturedModel model, Vector3f position, float rotX, float rotY, float rotZ, float scale) {
+	public Player(Loader loader,TexturedModel model, Vector3f position, float rotX, float rotY, float rotZ, float scale) {
 		super(model, position, rotX, rotY, rotZ, scale);
 		aabb = new AABB(this, super.getPosition());
 		ellipse = new Ellipsoid(this);
 		collTest = new CollisionTest();
+		healthBar = new GUITexture(loader.loadTexture("res/green_health_test.png"),new Vector2f(-0.85f, 0.85f), new Vector2f(0.125f, 0.02f));
+		healthTextStyle = new FontStyle(loader.loadFontTexture("res/arial.png", 0.4f), new File("res/arial.fnt"));
+		healthInfo = new GUIText(Float.toString(currentHealth),0.5f,healthTextStyle,new Vector2f(0.0625f,0.0625f),1,false);
+		healthInfo.setColour(1, 1, 1);
+		TextController.loadText(healthInfo);
 		super.setStaticModel(false);
 	}
 	
 	public void movePlayer(List<Terrain> terrains, List<WaterPlane> water, List<Entity> entities) 
 	{
-		checkUserInput();
+		checkUserInput(entities);
 		super.increaseRotation(0, currentTurnSpeed * Window.getFrameTime(), 0);
 		float distance = currentSpeed * Window.getFrameTime();
 		float distX = (float) (distance * Math.sin(Math.toRadians(super.getRotY())));
@@ -74,9 +105,9 @@ public class Player extends Entity{
 		ellipse.moveCentre(0, jumpSpeed * Window.getFrameTime(), 0);
 		for(Terrain t: terrains)
 		{
-			float terrainHeight = t.getTerrainHeight(super.getPosition().x, super.getPosition().z);
-			if(t.isPlayerOnTerrain(this))
+			if(t.isEntityOnTerrain(this))
 			{
+				float terrainHeight = t.getTerrainHeight(super.getPosition().x, super.getPosition().z);
 				if(super.getPosition().y < terrainHeight)
 				{
 					jumpSpeed = 0;
@@ -114,6 +145,32 @@ public class Player extends Entity{
 		{
 			collideAndSlide(velocityVector);
 		}
+		
+		if(inCombat)
+		{
+			attack((TestMob) currentSelectedEntity);
+		}
+		else
+		{
+			if(this.getHealth() < this.getMaxHealth())
+			{
+				this.setHealth(this.getHealth() + 0.1f);
+				if(currentHealth > this.getMaxHealth())
+				{
+					currentHealth = this.getMaxHealth();
+				}
+				float originX = this.getHealthBar().getScale().x;
+				this.getHealthBar().getScale().x = (this.getHealth() / this.getMaxHealth()) * 0.125f;
+				float currentX = this.getHealthBar().getScale().x;
+				float diff = originX - currentX;
+				this.getHealthBar().getPosition().x = this.getHealthBar().getPosition().x - diff;
+			}
+			
+		}
+		
+		TextController.removeText(healthInfo);
+		healthInfo.setContent(Float.toString((currentHealth / maxHealth) * 100));
+		TextController.loadText(healthInfo);
 
 		
 		// Ensure bounding box is always reset post collision calculations
@@ -129,17 +186,53 @@ public class Player extends Entity{
 		}
 	}
 	
-	private void checkUserInput()
+	private void attack(TestMob mob)
+	{
+		/*
+		 * Trigger auto attack
+		 * Play auto attack animation
+		 * Deal damage equal to weapon damage + stats
+		 */
+		autoAttackTime += Window.getFrameTime();
+		if(autoAttackTime > attackSpeed)
+		{
+			// Do auto attack
+			if(mob.getHealth() > 0)
+			{
+				mob.setHealth(mob.getHealth() - baseDamage); // Deal damage
+				// Calculate and animate health-bar
+				float originX = mob.getHealthBar().getScale().x;
+				mob.getHealthBar().getScale().x = (mob.getHealth() / mob.getMaxHealth()) * 0.125f;
+				float currentX = mob.getHealthBar().getScale().x;
+				float diff = originX - currentX;
+				mob.getHealthBar().getPosition().x = mob.getHealthBar().getPosition().x - diff;
+			}
+			else
+			{
+				inCombat = false;
+				mob.setAlive(false);
+			}
+			
+			
+			autoAttackTime %= attackSpeed;
+		}
+	}
+	
+	private void checkUserInput(List<Entity> entities)
 	{
 		/* Check whether a key has been pressed */
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
 		{
 			this.currentSpeed = ground_speed;
+			String msg = "w key pressed " + Window.getFrameTime();
+			Client.send(msg.getBytes());
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
 		{
 			this.currentSpeed = -ground_speed;
+			String msg = "s key pressed " + Window.getFrameTime();
+			Client.send(msg.getBytes());
 		}
 		
 		else
@@ -150,11 +243,15 @@ public class Player extends Entity{
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
 		{
 			this.currentTurnSpeed = -TURN_SPEED;
+			String msg = "d key pressed " + Window.getFrameTime();
+			Client.send(msg.getBytes());
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
 		{
 			this.currentTurnSpeed = TURN_SPEED;
+			String msg = "a key pressed " + Window.getFrameTime();
+			Client.send(msg.getBytes());
 		}
 		else
 		{
@@ -163,8 +260,45 @@ public class Player extends Entity{
 		
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE)){
 			jump();
+			String msg = " key pressed " + Window.getFrameTime();
+			Client.send(msg.getBytes());
 		}
 		
+		if(MouseButton.isButtonDown(GLFW.GLFW_MOUSE_BUTTON_2))
+		{
+			for(Entity ent: entities)
+			{
+				if(ent.isPlayerInClickRange(this)
+					&& ent.isClickable())
+				{
+					inCombat = true;
+					ent.setClicked(true);
+					((TestMob) ent).setAttacked(true);
+					currentSelectedEntity = ent;
+				}
+			}
+		}
+		
+	}
+	
+	public float getMaxHealth()
+	{
+		return maxHealth;
+	}
+	
+	public float getHealth()
+	{
+		return currentHealth;
+	}
+	
+	public void setHealth(float health)
+	{
+		this.currentHealth = health;
+	}
+	
+	public GUITexture getHealthBar()
+	{
+		return healthBar;
 	}
 	
 	public Zone getCurrentZone() {
@@ -193,6 +327,16 @@ public class Player extends Entity{
 	public Vector3f getVelocityVector()
 	{
 		return velocityVector;
+	}
+	
+	public void setCombatStatus(boolean inCombat)
+	{
+		this.inCombat = inCombat;
+	}
+	
+	public void setCurrentSelectedEntity(Entity entity)
+	{
+		this.currentSelectedEntity = entity;
 	}
 	
 	public void collideAndSlide(Vector3f velocity)
@@ -307,87 +451,4 @@ public class Player extends Entity{
 			}
 		}
 	}
-	
-	/*
-	 * Entity interpolation for smoothly correcting player's
-	 * position relative to the data received by the server
-	 * Interpolation carried over rotation values as well
-	 */
-	public void interpolatePlayer()
-	{
-		interpolatePosition(Client.getPreviousPlayerPosition(), Client.getCurrentPlayerPosition());
-		interpolateRotation(Client.getPrevPlayerRX(), Client.getPrevPlayerRY(), Client.getPrevPlayerRZ(),
-							Client.getCurrentPlayerRX(),Client.getCurrentPlayerRY(), Client.getCurrentPlayerRZ());
-	}
-	
-	// Interpolate position
-	private void interpolatePosition(Vector3f prevPosition, Vector3f nextPos)
-	{	
-		if(nextPos == null || Client.getUpdateTime() == 0)
-		{
-			return;
-		}
-		Vector3f diffPos = Vector3f.sub(nextPos, prevPosition, null);
-		float velX = diffPos.x / Client.getUpdateTime();
-		float velY = diffPos.y / Client.getUpdateTime();
-		float velZ = diffPos.z / Client.getUpdateTime();
-		
-		float dx = velX * Window.getFrameTime();
-		float dy = velY * Window.getFrameTime();
-		float dz = velZ * Window.getFrameTime();
-		
-		increasePosition(dx,dy,dz);
-		
-	}
-	
-	// Interpolate rotation
-	private void interpolateRotation(float prevRotX, float prevRotY, float prevRotZ,
-									float nextRotX, float nextRotY, float nextRotZ)
-	{
-		if(Client.getCurrentPlayerPosition() == null || Client.getUpdateTime() == 0)
-		{
-			return;
-		}
-		
-		float diffX = nextRotX - prevRotX;
-		float diffY = nextRotY - prevRotY;
-		float diffZ = nextRotZ - prevRotZ;
-		
-		float rx = (diffX / Client.getUpdateTime()) * Window.getFrameTime();
-		float ry = (diffY / Client.getUpdateTime()) * Window.getFrameTime();
-		float rz = (diffZ / Client.getUpdateTime()) * Window.getFrameTime();
-		
-		increaseRotation(rx,ry,rz);
-	}
-	
-	public void predictMovement(List<Terrain> terrains)
-	{
-		checkUserInput();
-		super.increaseRotation(0, currentTurnSpeed * Window.getFrameTime(), 0);
-		float distance = currentSpeed * Window.getFrameTime();
-		float distX = (float) (distance * Math.sin(Math.toRadians(super.getRotY())));
-		float distZ = (float) (distance * Math.cos(Math.toRadians(super.getRotY())));
-		super.increasePosition(distX, 0, distZ);
-		jumpSpeed += GRAVITY * Window.getFrameTime();
-		float distY = jumpSpeed * Window.getFrameTime();
-		super.increasePosition(0, distY, 0);
-		
-		for(Terrain terrain: terrains)
-		{
-			if(terrain.isPlayerOnTerrain(this))
-			{
-				float terrainHeight = terrain.getTerrainHeight(super.getPosition().x, super.getPosition().z);
-				if(super.getPosition().y < terrainHeight)
-				{
-					jumpSpeed = 0;
-					distY = terrainHeight - super.getPosition().y;
-					super.getPosition().y = terrainHeight;
-					airborne = false;
-				}
-			}
-		}
-	}
-	
-
-
 }

@@ -78,7 +78,7 @@ public abstract class Zone {
 	{
 		for(Terrain terrain: terrains)
 		{
-			if(terrain.isPlayerOnTerrain(player))
+			if(terrain.isEntityOnTerrain(player))
 			{
 				return true;
 			}

@@ -3,8 +3,11 @@ package entities;
 import org.lwjgl.util.vector.Vector3f;
 
 import models.TexturedModel;
+import networking.Client;
+import pathfinding.GridSquare;
 import physics.AABB;
 import physics.Triangle;
+import rendering.Window;
 
 public class Entity {
 
@@ -146,6 +149,46 @@ public class Entity {
 	public void setClicked(boolean clicked)
 	{
 		this.clicked = clicked;
+	}
+	
+	// Interpolate position
+	public void interpolatePosition(Vector3f prevPosition, Vector3f nextPos)
+	{	
+		if(prevPosition == null || nextPos == null)
+		{
+			return;
+		}
+		Vector3f diffPos = Vector3f.sub(nextPos, prevPosition, null);
+		float velX = diffPos.x / 0.125f;
+		float velY = diffPos.y / 0.125f;
+		float velZ = diffPos.z / 0.125f;
+		
+		float dx = velX * Window.getFrameTime();
+		float dy = velY * Window.getFrameTime();
+		float dz = velZ * Window.getFrameTime();
+		
+		increasePosition(dx,dy,dz);
+		
+	}
+	
+	// Interpolate rotation
+	public void interpolateRotation(float prevRotX, float prevRotY, float prevRotZ,
+									float nextRotX, float nextRotY, float nextRotZ)
+	{
+		if(Client.getCurrentPlayerPosition() == null || Client.getUpdateTime() == 0)
+		{
+			return;
+		}
+		
+		float diffX = nextRotX - prevRotX;
+		float diffY = nextRotY - prevRotY;
+		float diffZ = nextRotZ - prevRotZ;
+		
+		float rx = (diffX / Client.getUpdateTime()) * Window.getFrameTime();
+		float ry = (diffY / Client.getUpdateTime()) * Window.getFrameTime();
+		float rz = (diffZ / Client.getUpdateTime()) * Window.getFrameTime();
+		
+		increaseRotation(rx,ry,rz);
 	}
 	
 	public boolean isPlayerInClickRange(Player player)

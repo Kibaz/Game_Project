@@ -6,6 +6,7 @@ import org.lwjgl.util.vector.Vector3f;
 
 import entities.Entity;
 import entities.Light;
+import entities.TestMob;
 import models.BaseModel;
 import models.TexturedModel;
 import rendering.Loader;
@@ -63,11 +64,14 @@ public class TigranStartZone extends Zone{
 		
 		// Create Entities
 		Entity treeEnt = new Entity(treeTexModel, new Vector3f(90, super.getTerrains().get(0).getTerrainHeight(90, 70), 70), 0, 0, 0, 1);
-		treeEnt.setClickable(true);
 		treeEnt.setStaticModel(true);
 		
 		Entity boxEnt = new Entity(boxTexModel,new Vector3f(200, super.getTerrains().get(0).getTerrainHeight(200, 200),200),0,0,0,18);
 		boxEnt.setStaticModel(true);
+		
+		TestMob test = new TestMob(loader,boxTexModel,new Vector3f(70, super.getTerrains().get(0).getTerrainHeight(70, 90),90),0,0,0,2);
+		test.setClickable(true);
+		
 		
 		Random random = new Random();
 		for(int i = 0; i < 400; i++)
@@ -81,6 +85,7 @@ public class TigranStartZone extends Zone{
 		
 		super.getEntities().add(treeEnt);
 		super.getEntities().add(boxEnt);
+		super.getEntities().add(test);
 		World.addEntity(treeEnt);
 		World.addEntity(boxEnt);
 		

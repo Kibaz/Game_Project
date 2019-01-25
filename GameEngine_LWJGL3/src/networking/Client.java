@@ -6,15 +6,30 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
 
+import animation.AnimMeshLoader;
+import animation.AnimatedCharacter;
+import animation.Animation;
+import entities.Entity;
 import inputs.KeyboardHandler;
+import models.BaseModel;
+import models.TexturedModel;
+import rendering.Loader;
 import rendering.Window;
 import runtime.Main;
+import texturing.ModelTexture;
 
 public class Client {
+	
+	// Hold a reference ID for this client
+	private static int ID;
+	
+	private static Map<Integer,PlayerData> otherEntities = new HashMap<>();
 	
 	// Store client and server synchronisation time for updates
 	// This will calculate latency adjustments as well
@@ -39,13 +54,6 @@ public class Client {
 	private static float currentPlayerRX;
 	private static float currentPlayerRY;
 	private static float currentPlayerRZ;
-	
-	// Hold key states
-	private static int prev_w_key_state = GLFW.GLFW_RELEASE;
-	private static int prev_s_key_state = GLFW.GLFW_RELEASE;
-	private static int prev_a_key_state = GLFW.GLFW_RELEASE;
-	private static int prev_d_key_state = GLFW.GLFW_RELEASE;
-	private static int prev_space_key_state = GLFW.GLFW_RELEASE;
 	
 	
 	private static byte[] buffer = new byte[512];
@@ -79,27 +87,34 @@ public class Client {
 						udpSocket.receive(packet);
 						
 						String msg = new String(packet.getData(), 0, packet.getLength());
-						
+						if(msg.startsWith("ID: "))
+						{
+							ID = Integer.parseInt(msg.substring(msg.lastIndexOf(' ') + 1));
+						}
 						if(msg.startsWith("Position: "))
 						{
-							if(currentUpdateTime != 0)
-							{
-								prevUpdateTime = currentUpdateTime;
-							}
-							currentUpdateTime = time;
 							String values = msg.split(":")[1];
-							if(currentPlayerPosition != null)
+							int receivedID = Integer.parseInt(values.substring(values.lastIndexOf(',')+1));
+							if( receivedID != ID && !otherEntities.containsKey(receivedID))
 							{
-								previousPlayerPosition = currentPlayerPosition;
-								prevPlayerRX = currentPlayerRX;
-								prevPlayerRY = currentPlayerRY;
-								prevPlayerRZ = currentPlayerRZ;
+								// Create a new entity to render
+								createEntity(values);
 							}
-							currentPlayerPosition = new Vector3f(Float.parseFloat(values.split(",")[0]),
-									Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
-							currentPlayerRX = Float.parseFloat(values.split(",")[3]);
-							currentPlayerRY = Float.parseFloat(values.split(",")[4]);
-							currentPlayerRZ = Float.parseFloat(values.split(",")[5]);
+							
+							if(otherEntities.containsKey(receivedID))
+							{
+								PlayerData current = otherEntities.get(receivedID);
+								if(current.getNextPosition() != null)
+								{
+									current.setPreviousPosition(current.getNextPosition());
+								}
+								Vector3f position = new Vector3f(Float.parseFloat(values.split(",")[0]),
+										Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
+								float rx = Float.parseFloat(values.split(",")[3]);
+								float ry = Float.parseFloat(values.split(",")[4]);
+								float rz = Float.parseFloat(values.split(",")[5]);
+								current.setNextPosition(position);
+							}
 						}
 						
 
@@ -111,10 +126,7 @@ public class Client {
 				{
 					e.printStackTrace();
 				}
-
-
 			}
-			
 		});
 		
 		// Start client thread
@@ -132,118 +144,9 @@ public class Client {
 		}
 	}
 	
-	// Check for inputs i.e Keyboard presses and Mouse clicks
-	// Send this data to the server accordingly
-	public static void sendInputs()
-	{
-		// Check for W key Press and Release Events
-		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
-		{
-			if(prev_w_key_state == GLFW.GLFW_RELEASE)
-			{
-				// send client input
-				send("w key pressed".getBytes());
-			}
-			prev_w_key_state = GLFW.GLFW_PRESS;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_W))
-		{
-			if(prev_w_key_state == GLFW.GLFW_PRESS)
-			{
-				// send client input
-				send("w key released".getBytes());
-			}
-			prev_w_key_state = GLFW.GLFW_RELEASE;
-		}
-		
-		// Check for S key Press and Release events
-		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
-		{
-			if(prev_s_key_state == GLFW.GLFW_RELEASE)
-			{
-				// send client input
-				send("s key pressed".getBytes());
-			}
-			prev_s_key_state = GLFW.GLFW_PRESS;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_S))
-		{
-			if(prev_s_key_state == GLFW.GLFW_PRESS)
-			{
-				// send client input
-				send("s key released".getBytes());
-			}
-			prev_s_key_state = GLFW.GLFW_RELEASE;
-		}
-		
-		// Check for D key Press and Release events
-		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
-		{
-			if(prev_d_key_state == GLFW.GLFW_RELEASE)
-			{
-				// send client input
-				send("d key pressed".getBytes());
-			}
-			prev_d_key_state = GLFW.GLFW_PRESS;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_D))
-		{
-			if(prev_d_key_state == GLFW.GLFW_PRESS)
-			{
-				// send client input
-				send("d key released".getBytes());
-			}
-			prev_d_key_state = GLFW.GLFW_RELEASE;
-		}
-		
-		// Check for A key Press and Release events
-		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
-		{
-			if(prev_a_key_state == GLFW.GLFW_RELEASE)
-			{
-				// send client input
-				send("a key pressed".getBytes());
-			}
-			prev_a_key_state = GLFW.GLFW_PRESS;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_A))
-		{
-			if(prev_a_key_state == GLFW.GLFW_PRESS)
-			{
-				// send client input
-				send("a key released".getBytes());
-			}
-			prev_a_key_state = GLFW.GLFW_RELEASE;
-		}
-		
-		// Check for SPACE key Press and Release events
-		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE))
-		{
-			if(prev_space_key_state == GLFW.GLFW_RELEASE)
-			{
-				// send client input
-				send(" key pressed".getBytes());
-			}
-			prev_space_key_state = GLFW.GLFW_PRESS;
-		}
-		
-		if(KeyboardHandler.isKeyUp(GLFW.GLFW_KEY_SPACE))
-		{
-			if(prev_space_key_state == GLFW.GLFW_PRESS)
-			{
-				// send client input
-				send(" key released".getBytes());
-			}
-			prev_space_key_state = GLFW.GLFW_RELEASE;
-		}
-	}
-	
 	public static void disconnect()
 	{
+		send(("Client " + ID + " disconnected").getBytes());
 		udpSocket.close();
 		try {
 			clientThread.join(); // wait for thread to terminate
@@ -304,6 +207,21 @@ public class Client {
 	public static void increaseUpdateTime()
 	{
 		time += Window.getFrameTime();
+	}
+	
+	public static Map<Integer, PlayerData> getOtherEntities() {
+		return otherEntities;
+	}
+
+	private static void createEntity(String data)
+	{
+		Vector3f position = new Vector3f(Float.parseFloat(data.split(",")[0]),
+				Float.parseFloat(data.split(",")[1]),Float.parseFloat(data.split(",")[2]));
+		float rx = Float.parseFloat(data.split(",")[3]);
+		float ry = Float.parseFloat(data.split(",")[4]);
+		float rz = Float.parseFloat(data.split(",")[5]);
+		//PlayerData playerData = new PlayerData(Main.testEnt,Main.testAnimChar);
+		//otherEntities.put(Integer.parseInt(data.split(",")[6]), playerData);
 	}
 
 	

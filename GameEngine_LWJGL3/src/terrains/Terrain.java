@@ -9,8 +9,11 @@ import javax.imageio.ImageIO;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
+import entities.Entity;
 import entities.Player;
 import models.BaseModel;
+import pathfinding.Graph;
+import pathfinding.GridSquare;
 import rendering.Loader;
 import texturing.CausticTexture;
 import texturing.ModelTexture;
@@ -27,6 +30,8 @@ public class Terrain {
 	
 	private float[][] heights;
 	
+	private Graph grid; // Store a grid of squares for pathfinding algorithm
+	
 	private BaseModel baseModel; // Terrain model
 	private ModelTexture texture; // Terrain texture
 	private CausticTexture causticTexture; // Current caustic texture to be rendered
@@ -37,6 +42,7 @@ public class Terrain {
 		this.x = gridX * SIZE;
 		this.z = gridZ * SIZE;
 		this.baseModel = generateTerrain(loader, heightMap);
+		generateGrid();
 	}
 	
 	public CausticTexture getCausticTexture() {
@@ -46,7 +52,21 @@ public class Terrain {
 	public void setCausticTexture(CausticTexture causticTexture) {
 		this.causticTexture = causticTexture;
 	}
-
+	
+	private void generateGrid()
+	{
+		float gridSquareSize = SIZE / (float) (heights.length - 1);
+		float gridSize = SIZE / gridSquareSize;
+		grid = new Graph((int) gridSize,gridSquareSize);
+		for(int i = 0; i < gridSize; i++)
+		{
+			for(int j = 0; j < gridSize; j++)
+			{
+				GridSquare gs = new GridSquare(i,j,gridSquareSize);
+				grid.setGridSquare(new Vector2f(i,j), gs);
+			}
+		}
+	}
 
 	private BaseModel generateTerrain(Loader loader, String heightMap)
 	{
@@ -65,7 +85,6 @@ public class Terrain {
 		
 		int VERTEX_COUNT = image.getHeight();
 		heights = new float[VERTEX_COUNT][VERTEX_COUNT];
-		
 		int count = VERTEX_COUNT * VERTEX_COUNT;
 		float[] vertices = new float[count * 3];
 		float[] normals = new float[count * 3];
@@ -121,7 +140,7 @@ public class Terrain {
 	public ModelTexture getTexture() {
 		return texture;
 	}
-	
+
 	private Vector3f calcNormal(int x, int z, BufferedImage image)
 	{
 		float heightL = getHeight(x-1, z, image);
@@ -178,12 +197,17 @@ public class Terrain {
 		return result;
 	}
 	
-	public boolean isPlayerOnTerrain(Player player)
+	public Graph getGrid()
 	{
-		if(player.getPosition().x >= this.getX() && 
-				player.getPosition().z >= this.getZ() && 
-				player.getPosition().x <= this.x + SIZE &&
-				player.getPosition().z <= this.z + SIZE)
+		return grid;
+	}
+	
+	public boolean isEntityOnTerrain(Entity entity)
+	{
+		if(entity.getPosition().x >= this.getX() && 
+				entity.getPosition().z >= this.getZ() && 
+				entity.getPosition().x <= this.x + SIZE &&
+				entity.getPosition().z <= this.z + SIZE)
 		{
 			return true;
 		}

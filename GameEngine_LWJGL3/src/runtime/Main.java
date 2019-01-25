@@ -1,5 +1,6 @@
 package runtime;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -18,13 +19,19 @@ import entities.Camera;
 import entities.Entity;
 import entities.Light;
 import entities.Player;
+import entities.TestMob;
 import fontRendering.TextController;
+import fontUtils.FontStyle;
+import fontUtils.GUIText;
 import guis.GUIRenderer;
 import guis.GUITexture;
 import models.BaseModel;
 import models.TexturedModel;
 import networking.Client;
+import networking.PlayerData;
 import particles.ParticleManager;
+import pathfinding.Graph;
+import pathfinding.GridSquare;
 import physics.SAP;
 import rendering.AdvancedRenderer;
 import rendering.Loader;
@@ -39,8 +46,6 @@ import worldData.TigranStartZone;
 import worldData.World;
 
 public class Main {
-	
-	public static Entity testEnt;
 
 	public static void main(String[] args) throws UnknownHostException, SocketException {
 		
@@ -52,16 +57,6 @@ public class Main {
 		List<WaterPlane> water = new ArrayList<>(); // Any water?
 		List<GUITexture> guis = new ArrayList<>(); // Store GUIs
 		
-		
-		// Initialise Client communications program
-		Client.serverAddress = InetAddress.getByName("127.0.0.1"); // Server IP address
-		Client.serverPort = 8129; // Server port
-		// Start listening for responses from the server
-		Client.listen();
-		
-		// Initialise window
-		Window.init();
-		
 		// Initialise loader for the game
 		/*
 		 * The Loader will handle loading 
@@ -69,6 +64,14 @@ public class Main {
 		 * text etc...
 		 */
 		Loader loader = new Loader();
+		
+		// Initialise Client communications program
+		Client.serverAddress = InetAddress.getByName("127.0.0.1"); // Server IP address
+		Client.serverPort = 8129; // Server port
+		// Start listening for responses from the server
+		
+		// Initialise window
+		Window.init();
 		
 		// Initialise Font Handler
 		TextController.init(loader);
@@ -97,13 +100,8 @@ public class Main {
 		ModelTexture playerTex = new ModelTexture(loader.loadTexture("res/Character Texture.png"));
 		TexturedModel playerTexMod = new TexturedModel(testModels[0], playerTex);
 		
-		testEnt = new Entity(playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
-		entities.add(testEnt);
-		
-		Player player = new Player(playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
-		String playerPosStr = "Position:" + player.getPosition().x + "," + player.getPosition().y + "," + player.getPosition().z
-								+ "," + player.getRotX() + "," + player.getRotY() + "," + player.getRotZ();
-		Client.send(playerPosStr.getBytes());
+		Player player = new Player(loader,playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
+		guis.add(player.getHealthBar());
 		Client.setPreviousPlayerPosition(player.getPosition());
 		World.addEntity(player);
 		
@@ -114,6 +112,9 @@ public class Main {
 		animChar.playCurrentAnimation();
 		animatedChars.add(animChar);
 		
+		Client.listen();
+		Client.send("Requesting connection".getBytes());
+		
 		// Set up player camera - 3rd person camera
 		Camera camera = new Camera(player);
 		
@@ -121,15 +122,12 @@ public class Main {
 		
 		ParticleManager.init(loader, renderer.getProjectionMatrix());
 		
-		GUITexture gui = new GUITexture(renderer.getShadowMapTexture(), new Vector2f(0.5f, 0.5f), new Vector2f(0.25f, 0.25f));
-		
 		GUIRenderer guiRenderer = new GUIRenderer(loader);
 		
 		WaterFBO waterFBOS = new WaterFBO();
 		
 		WaterShader waterShader = new WaterShader();
 		WaterRenderer waterRenderer = new WaterRenderer(loader, waterShader, renderer.getProjectionMatrix(), waterFBOS);
-		
 		
 		// Initialising physics
 		SAP sap = new SAP();
@@ -139,20 +137,28 @@ public class Main {
 			/*window.clear();*/
 			
 			// Testing client side prediction
-			//player.movePlayer(terrains, water, entities);
-			player.predictMovement(terrains);
-			if(Client.getCurrentPlayerPosition() != null)
-			{
-				testEnt.setPosition(Client.getCurrentPlayerPosition());
-				testEnt.setRotX(Client.getCurrentPlayerRX());
-				testEnt.setRotY(Client.getCurrentPlayerRY());
-				testEnt.setRotZ(Client.getCurrentPlayerRZ());
-			}
-			
-			// Send input from the client to the server
-			Client.sendInputs();
-			Client.increaseUpdateTime();
+			player.movePlayer(terrains, water, entities);
 			//waterPlane.update(player);
+			for(Entity entity: entities)
+			{
+				if(entity.isClicked())
+				{
+					if(entity instanceof TestMob)
+					{
+						TestMob curr = (TestMob) entity;
+						if(!guis.contains(curr.getHealthBar()))
+						{
+							guis.add(curr.getHealthBar());
+						}
+						
+					}
+				}
+				
+				if(entity instanceof TestMob)
+				{
+					((TestMob) entity).update(player,terrains);
+				}
+			}
 			
 			// Carry out animations
 			animChar.getAnimator().update();
@@ -222,7 +228,5 @@ public class Main {
 		loader.cleanUp();
 		Window.destroy();
 		Client.disconnect();
-
 	}
-
 }
