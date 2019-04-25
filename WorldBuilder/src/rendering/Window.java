@@ -11,8 +11,10 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -54,6 +56,11 @@ import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.JToolBar;
+import javax.swing.JFormattedTextField;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+import java.awt.Color;
+import javax.swing.UIManager;
 
 
 public class Window extends JFrame implements MouseListener,MouseMotionListener,MouseWheelListener{
@@ -72,7 +79,7 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 	private static float mouseDX;
 	private static float mouseDY;
 	
-	private List<String> loadFileQueue;
+	private Map<Integer,Object[]> entityQueue;
 	
 	private List<Terrain> terrains = new ArrayList<>();
 	private List<Light> lights = new ArrayList<>();
@@ -85,18 +92,19 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 	
 	private Loader loader;
 	private JTextField entObjFile;
+	private JTextField entTextureFile;
 	
 	public Window(Loader loader)
 	{
 		this.loader = loader;
 		camera = new Camera();
-		loadFileQueue = new ArrayList<>();
+		entityQueue = new HashMap<>();
 		init();
 	}
 	
 	private void init()
 	{
-		setTitle("World Builder");
+		setTitle("World Editor");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		getContentPane().setLayout(new BorderLayout());
 		setPreferredSize(new Dimension(WIDTH,HEIGHT));
@@ -123,11 +131,16 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 			@Override
 			public void paintGL() {
 				// Use as rendering loop
-				Iterator<String> it = loadFileQueue.iterator();
+				Iterator<Integer> it = entityQueue.keySet().iterator();
 				while(it.hasNext())
 				{
-					String filePath = it.next();
-					BaseModel test = OBJLoader.loadObj(filePath, loader);
+					int currIndex = it.next();
+					Object[] data = entityQueue.get(currIndex);
+					BaseModel test = OBJLoader.loadObj((String) data[0], loader);
+					ModelTexture texture = new ModelTexture(loader.loadTexture((String) data[1]));
+					TexturedModel texModel = new TexturedModel(test,texture);
+					Entity entity = new Entity(texModel,new Vector3f((float) data[2],(float) data[3],(float) data[4]),(float) data[5],(float) data[6],(float) data[7],(float) data[8]);
+					entities.add(entity);
 					it.remove();
 				}
 				camera.move();
@@ -140,21 +153,34 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 			
 		}, BorderLayout.CENTER);
 		
-		JPanel entityPanel = new JPanel();
-		Border entityPanelBorder = BorderFactory.createTitledBorder("Entity Editor");
+		JPanel entityCreator = new JPanel();
+		entityCreator.setBackground(Color.DARK_GRAY);
+		Border entityPanelBorder = BorderFactory.createTitledBorder("Entity Creator");
 		((TitledBorder) entityPanelBorder).setTitleJustification(TitledBorder.CENTER);
-		getContentPane().add(entityPanel, BorderLayout.EAST);
-		entityPanel.setBorder(entityPanelBorder);
-		entityPanel.setVisible(false);
+		getContentPane().add(entityCreator, BorderLayout.EAST);
+		entityCreator.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"), "Entity Creator", TitledBorder.CENTER, TitledBorder.TOP, null, Color.WHITE));
+		entityCreator.setVisible(false);
 		
 		JLabel lblModel = new JLabel("Model:");
+		lblModel.setForeground(Color.WHITE);
 		
 		entObjFile = new JTextField();
+		entObjFile.setEditable(false);
 		entObjFile.setColumns(10);
 		
 		JButton browseObjFiles = new JButton("Browse");
 		browseObjFiles.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				JFileChooser objChooser = new JFileChooser();
+				FileNameExtensionFilter objFilter = new FileNameExtensionFilter("OBJ Files", "obj");
+				objChooser.setAcceptAllFileFilterUsed(false);
+				objChooser.setFileFilter(objFilter);
+				int returnVal = objChooser.showOpenDialog(browseObjFiles);
+				if(returnVal == JFileChooser.APPROVE_OPTION)
+				{
+					File file = objChooser.getSelectedFile();
+					entObjFile.setText(file.getPath());
+				}
 			}
 		});
 		
@@ -163,40 +189,214 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				entityPanel.setVisible(false);
+				entityCreator.setVisible(false);
 				
 			}
 			
 		});
-		GroupLayout gl_entityPanel = new GroupLayout(entityPanel);
-		gl_entityPanel.setHorizontalGroup(
-			gl_entityPanel.createParallelGroup(Alignment.TRAILING)
-				.addGroup(gl_entityPanel.createSequentialGroup()
+		
+		JLabel lblTexture = new JLabel("Texture:");
+		lblTexture.setForeground(Color.WHITE);
+		
+		entTextureFile = new JTextField();
+		entTextureFile.setEditable(false);
+		entTextureFile.setColumns(10);
+		
+		JButton browseTextures = new JButton("Browse");
+		browseTextures.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JFileChooser imgChooser = new JFileChooser();
+				FileNameExtensionFilter imgFilter = new FileNameExtensionFilter("Texture Files", "jpg", "png");
+				imgChooser.setAcceptAllFileFilterUsed(false);
+				imgChooser.setFileFilter(imgFilter);
+				int returnVal = imgChooser.showOpenDialog(browseObjFiles);
+				if(returnVal == JFileChooser.APPROVE_OPTION)
+				{
+					File file = imgChooser.getSelectedFile();
+					entTextureFile.setText(file.getPath());
+				}
+				
+			}
+			
+		});
+		
+		JLabel lblPositionX = new JLabel("Position X:");
+		lblPositionX.setForeground(Color.WHITE);
+		
+		JLabel lblPositionY = new JLabel("Position Y:");
+		lblPositionY.setForeground(Color.WHITE);
+		
+		JLabel lblPositionZ = new JLabel("Position Z:");
+		lblPositionZ.setForeground(Color.WHITE);
+		
+		JLabel lblRotationX = new JLabel("Rotation X:");
+		lblRotationX.setForeground(Color.WHITE);
+		
+		JLabel lblRotationY = new JLabel("Rotation Y:");
+		lblRotationY.setForeground(Color.WHITE);
+		
+		JLabel lblRotationZ = new JLabel("Rotation Z:");
+		lblRotationZ.setForeground(Color.WHITE);
+		
+		JSpinner posXField = new JSpinner();
+		posXField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JSpinner posYField = new JSpinner();
+		posYField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JSpinner posZField = new JSpinner();
+		posZField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JSpinner rotXField = new JSpinner();
+		rotXField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JSpinner rotYField = new JSpinner();
+		rotYField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JSpinner rotZField = new JSpinner();
+		rotZField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JLabel lblScale = new JLabel("Scale:");
+		lblScale.setForeground(Color.WHITE);
+		
+		JSpinner scaleField = new JSpinner();
+		scaleField.setModel(new SpinnerNumberModel(new Float(1), new Float(1), null, new Float(1)));
+		
+		JButton createEntityBtn = new JButton("Create");
+		createEntityBtn.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// Ensure that a model and texture file have been selected
+				if(!entObjFile.getText().equals("")&&
+						!entTextureFile.getText().equals(""))
+				{
+					Border defaultBorder = (Border) entObjFile.getClientProperty("border");
+					if(defaultBorder != null)
+					{
+						entObjFile.setBorder(defaultBorder);
+						entTextureFile.setBorder(defaultBorder);
+					}
+					
+					String objPath = entObjFile.getText(); // OBJ File
+					String texturePath = entTextureFile.getText(); // Texture File
+					Object posX = posXField.getValue();
+					Object posY = posYField.getValue();
+					Object posZ = posZField.getValue();
+					Object rotX = rotXField.getValue();
+					Object rotY = rotYField.getValue();
+					Object rotZ = rotZField.getValue();
+					Object scale = scaleField.getValue();
+					
+					// Register model path and texture path in queue
+					entityQueue.put(entityQueue.size()+1, new Object[] {
+							objPath,texturePath,posX,posY,posZ,rotX,rotY,rotZ,scale
+					});
+					
+				}
+				else
+				{
+					entObjFile.putClientProperty("border",entObjFile.getBorder());
+					entObjFile.setBorder(BorderFactory.createLineBorder(Color.RED));
+					entTextureFile.setBorder(BorderFactory.createLineBorder(Color.RED));
+				}
+				
+			}
+			
+		});
+		
+		GroupLayout gl_entityCreator = new GroupLayout(entityCreator);
+		gl_entityCreator.setHorizontalGroup(
+			gl_entityCreator.createParallelGroup(Alignment.TRAILING)
+				.addGroup(Alignment.LEADING, gl_entityCreator.createSequentialGroup()
 					.addContainerGap()
-					.addGroup(gl_entityPanel.createParallelGroup(Alignment.LEADING)
-						.addGroup(gl_entityPanel.createSequentialGroup()
-							.addComponent(lblModel)
+					.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING)
+						.addComponent(createEntityBtn, GroupLayout.DEFAULT_SIZE, 282, Short.MAX_VALUE)
+						.addComponent(btnClose, Alignment.TRAILING)
+						.addGroup(Alignment.TRAILING, gl_entityCreator.createSequentialGroup()
+							.addGroup(gl_entityCreator.createParallelGroup(Alignment.TRAILING)
+								.addGroup(Alignment.LEADING, gl_entityCreator.createSequentialGroup()
+									.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING, false)
+										.addComponent(lblPositionX, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+										.addComponent(lblPositionY, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+										.addComponent(lblPositionZ, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 56, Short.MAX_VALUE))
+									.addPreferredGap(ComponentPlacement.RELATED)
+									.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING)
+										.addComponent(posXField, GroupLayout.DEFAULT_SIZE, 77, Short.MAX_VALUE)
+										.addComponent(posYField, GroupLayout.DEFAULT_SIZE, 77, Short.MAX_VALUE)
+										.addComponent(posZField, GroupLayout.DEFAULT_SIZE, 77, Short.MAX_VALUE))
+									.addPreferredGap(ComponentPlacement.RELATED, 18, GroupLayout.PREFERRED_SIZE)
+									.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING)
+										.addComponent(lblRotationY)
+										.addComponent(lblRotationX, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+										.addComponent(lblRotationZ)))
+								.addGroup(Alignment.LEADING, gl_entityCreator.createSequentialGroup()
+									.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING)
+										.addComponent(lblTexture)
+										.addComponent(lblModel))
+									.addPreferredGap(ComponentPlacement.RELATED)
+									.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING)
+										.addComponent(entObjFile, GroupLayout.DEFAULT_SIZE, 163, Short.MAX_VALUE)
+										.addComponent(entTextureFile, GroupLayout.DEFAULT_SIZE, 163, Short.MAX_VALUE)))
+								.addComponent(lblScale))
 							.addPreferredGap(ComponentPlacement.RELATED)
-							.addComponent(entObjFile, GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
-							.addPreferredGap(ComponentPlacement.RELATED)
-							.addComponent(browseObjFiles))
-						.addGroup(Alignment.TRAILING, gl_entityPanel.createSequentialGroup()
-							.addComponent(btnClose)
-							.addContainerGap())))
+							.addGroup(gl_entityCreator.createParallelGroup(Alignment.LEADING)
+								.addGroup(Alignment.TRAILING, gl_entityCreator.createParallelGroup(Alignment.LEADING, false)
+									.addComponent(browseTextures, GroupLayout.DEFAULT_SIZE, 67, Short.MAX_VALUE)
+									.addComponent(browseObjFiles, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+								.addComponent(scaleField, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 67, Short.MAX_VALUE)
+								.addComponent(rotZField, GroupLayout.DEFAULT_SIZE, 67, Short.MAX_VALUE)
+								.addComponent(rotYField, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 67, Short.MAX_VALUE)
+								.addComponent(rotXField, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 67, Short.MAX_VALUE))))
+					.addContainerGap())
 		);
-		gl_entityPanel.setVerticalGroup(
-			gl_entityPanel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_entityPanel.createSequentialGroup()
+		gl_entityCreator.setVerticalGroup(
+			gl_entityCreator.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_entityCreator.createSequentialGroup()
 					.addContainerGap()
-					.addGroup(gl_entityPanel.createParallelGroup(Alignment.BASELINE)
+					.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
 						.addComponent(lblModel)
 						.addComponent(entObjFile, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 						.addComponent(browseObjFiles))
-					.addPreferredGap(ComponentPlacement.RELATED, 749, Short.MAX_VALUE)
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
+						.addComponent(lblTexture)
+						.addComponent(entTextureFile, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(browseTextures))
+					.addGap(18)
+					.addGroup(gl_entityCreator.createParallelGroup(Alignment.TRAILING)
+						.addGroup(gl_entityCreator.createSequentialGroup()
+							.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblPositionX)
+								.addComponent(posXField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+								.addComponent(lblRotationX)
+								.addComponent(rotXField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblPositionY)
+								.addComponent(posYField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+								.addComponent(lblRotationY)
+								.addComponent(rotYField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblPositionZ)
+								.addComponent(posZField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)))
+						.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
+							.addComponent(lblRotationZ)
+							.addComponent(rotZField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)))
+					.addPreferredGap(ComponentPlacement.UNRELATED)
+					.addGroup(gl_entityCreator.createParallelGroup(Alignment.BASELINE)
+						.addComponent(scaleField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblScale))
+					.addGap(18)
+					.addComponent(createEntityBtn)
+					.addPreferredGap(ComponentPlacement.RELATED, 558, Short.MAX_VALUE)
 					.addComponent(btnClose)
 					.addContainerGap())
 		);
-		entityPanel.setLayout(gl_entityPanel);
+		entityCreator.setLayout(gl_entityCreator);
 		
 		glCanvas.addMouseMotionListener(this);
 		glCanvas.addMouseListener(this);
@@ -205,9 +405,12 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		pack();
 		
 		JMenuBar menuBar = new JMenuBar();
+		menuBar.setForeground(Color.BLACK);
+		menuBar.setBackground(Color.DARK_GRAY);
 		setJMenuBar(menuBar);
 		
 		JMenu mnFile = new JMenu("File");
+		mnFile.setForeground(Color.WHITE);
 		menuBar.add(mnFile);
 		
 		JMenuItem mntmOpen = new JMenuItem("Open");
@@ -225,6 +428,7 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		mnFile.add(mntmSave);
 		
 		JMenu mnEntity = new JMenu("Entities");
+		mnEntity.setForeground(Color.WHITE);
 		menuBar.add(mnEntity);
 		
 		JMenuItem mntmImport = new JMenuItem("Import");
@@ -235,19 +439,21 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				entityPanel.setVisible(true);
+				entityCreator.setVisible(true);
 			}
 			
 		});
 		mnEntity.add(mntmCreate);
 		
 		JMenu mnTerrain = new JMenu("Terrains");
+		mnTerrain.setForeground(Color.WHITE);
 		menuBar.add(mnTerrain);
 		
 		JMenuItem mntmImport_1 = new JMenuItem("Import");
 		mnTerrain.add(mntmImport_1);
 		
 		JMenu mnLights = new JMenu("Lights");
+		mnLights.setForeground(Color.WHITE);
 		menuBar.add(mnLights);
 		
 		JMenuItem mntmImport_2 = new JMenuItem("Import");
