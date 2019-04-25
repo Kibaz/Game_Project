@@ -1,0 +1,50 @@
+#version 400 core
+
+const float tiling = 4.0;
+
+const float waveLength = 4.0;
+const float waveAmplitude = 0.2;
+const float PI = 3.1415926535897932384626433832795;
+
+in vec2 position;
+in vec2 texCoords;
+
+out vec4 clipSpace;
+out vec2 textureCoords;
+out vec3 toCameraVector;
+out vec3 fromLightVector;
+
+uniform mat4 projectionMatrix;
+uniform mat4 modelMatrix;
+uniform mat4 viewMatrix;
+uniform vec3 cameraPosition;
+uniform vec3 lightPosition;
+
+uniform float waveTime;
+
+float calculateVertexHeight(float x, float z)
+{
+	float radX = (x / waveLength + waveTime) * 2.0 * PI;
+	float radZ = (z / waveLength + waveTime) * 2.0 * PI;
+	return waveAmplitude * 0.5 * (sin(radZ) + cos(radX));
+}
+
+vec3 distortVertex(vec3 vertex)
+{
+	float xDistortion = calculateVertexHeight(vertex.x,vertex.z);
+	float yDistortion = calculateVertexHeight(vertex.x,vertex.z);
+	float zDistortion = calculateVertexHeight(vertex.x,vertex.z);
+	return vertex + vec3(xDistortion, yDistortion, zDistortion);
+}
+
+void main(void)
+{
+	vec3 currVert = vec3(position.x, 0.0, position.y);
+	//currVert = distortVertex(currVert);
+	vec4 worldPosition = modelMatrix * vec4(currVert,1.0);
+	clipSpace = projectionMatrix * viewMatrix * worldPosition;
+	gl_Position = clipSpace;
+	textureCoords = vec2(position.x/2.0 + 0.5, position.y/2.0 + 0.5) * tiling;
+	toCameraVector = cameraPosition - worldPosition.xyz;
+	fromLightVector = worldPosition.xyz - lightPosition;
+}

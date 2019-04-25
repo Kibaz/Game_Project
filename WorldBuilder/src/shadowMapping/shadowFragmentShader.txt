@@ -1,0 +1,18 @@
+#version 400 core
+
+in vec2 pass_texCoords;
+
+out vec4 out_Colour;
+
+uniform sampler2D textureSample;
+
+void main(void)
+{
+	float alpha = texture(textureSample, pass_texCoords).a;
+	if(alpha < 0.5)
+	{
+		discard;
+	}
+
+	out_Colour = vec4(1.0);
+}

@@ -1,0 +1,13 @@
+#version 400 core
+
+in vec2 pass_texCoords;
+
+out vec4 out_colour;
+
+uniform vec3 colour;
+uniform sampler2D fontAtlas;
+
+void main(void)
+{
+	out_colour = vec4(colour, texture(fontAtlas, pass_texCoords).a);
+}
