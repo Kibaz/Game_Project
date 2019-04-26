@@ -1,5 +1,8 @@
 package inputs;
 
+import java.awt.event.MouseEvent;
+import java.util.List;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector2f;
@@ -13,7 +16,6 @@ import physics.AABB;
 import rendering.Window;
 import terrains.Terrain;
 import utils.Maths;
-import worldData.World;
 
 public class MousePicker {
 	
@@ -32,8 +34,8 @@ public class MousePicker {
 	
 	private Entity currentHoveredEntity;
 
-	private int prevLeftMouseState = GLFW.GLFW_RELEASE;
-	private int prevRightMouseState = GLFW.GLFW_RELEASE;
+	private int prevLeftMouseState = MouseEvent.MOUSE_RELEASED;
+	private int prevRightMouseState = MouseEvent.MOUSE_RELEASED;
 	
 	public MousePicker(Camera camera, Matrix4f projection, Terrain terrain)
 	{
@@ -58,10 +60,11 @@ public class MousePicker {
 		return ray;
 	}
 	
-	public void update(Player player)
+	public void update(List<Entity> entities)
 	{
 		viewMatrix = Maths.createViewMatrix(camera);
 		ray = calculateMouseRay(); // Also equal to the "Direction" vector
+		/*
 		if(intersectionInRange(0, RAY_LENGTH, ray))
 		{
 			currentTerrainPoint = binarySearch(0,0,RAY_LENGTH,ray);
@@ -69,53 +72,51 @@ public class MousePicker {
 		else
 		{
 			currentTerrainPoint = null;
-		}
+		}*/
 
 		// Calculate point of origin of the ray
 		Vector3f start = getPointOnRay(ray, 0);
 		
 		// For each existing entity
-		for(Entity entity: World.worldObjects)
+		for(Entity entity: entities)
 		{
-			// If the entity is clickable
-			if(entity.isClickable())
-			{
-				if(rayIntersectsEntity(entity,ray,start)) {
-					if(entity.isPlayerInClickRange(player))
-					{
-						// Get state of left-mouse button
-						int newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_LEFT);
-						// Check if a single click has been invoked
-						if(newState == GLFW.GLFW_RELEASE && prevLeftMouseState == GLFW.GLFW_PRESS)
-						{
-							currentHoveredEntity = entity;
-						}
-						
-						prevLeftMouseState = newState;
-						// Get state of right-mouse button
-						newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_RIGHT);
-						// Check if a single click has been invoked
-						if(newState == GLFW.GLFW_RELEASE && prevRightMouseState == GLFW.GLFW_PRESS)
-						{
-							// Trigger event on clicked entity
-							System.out.println("right click");
-						}
-						
-						// keep track of last mouse state
-						prevRightMouseState = newState;
-						
-					}
+			if(rayIntersectsEntity(entity,ray,start)) {
+				
+				entity.setHighlighted(true);
+				
+				// Get state of left-mouse button
+				int newState = Window.getLeftMouseState();
+				// Check if a single click has been invoked
+				if(newState == MouseEvent.MOUSE_RELEASED && prevLeftMouseState == MouseEvent.MOUSE_PRESSED)
+				{
+					currentHoveredEntity = entity;
 				}
-				
-				
+					
+				prevLeftMouseState = newState;
+				// Get state of right-mouse button
+				newState = Window.getRightMouseState();
+				// Check if a single click has been invoked
+				if(newState == MouseEvent.MOUSE_RELEASED && prevRightMouseState == MouseEvent.MOUSE_PRESSED)
+				{
+					// Trigger event on clicked entity
+					System.out.println("right click");
+				}
+					
+				// keep track of last mouse state
+				prevRightMouseState = newState;
+					
+			}
+			else
+			{
+				entity.setHighlighted(false);
 			}
 			
 		}
 		
 		// Get state of left-mouse button
-		int newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_LEFT);
+		int newState = Window.getLeftMouseState();
 		// Check if a single click has been invoked
-		if(newState == GLFW.GLFW_RELEASE && prevLeftMouseState == GLFW.GLFW_PRESS)
+		if(newState == MouseEvent.MOUSE_RELEASED && prevLeftMouseState == MouseEvent.MOUSE_PRESSED)
 		{
 			if(currentHoveredEntity != null)
 			{
@@ -129,8 +130,8 @@ public class MousePicker {
 	
 	private Vector3f calculateMouseRay()
 	{
-		float mouseX = MouseCursor.getXPos();
-		float mouseY = MouseCursor.getYPos();
+		float mouseX = Window.getMouseX();
+		float mouseY = Window.getMouseY();
 		Vector2f normalizedCoords = getNormalizedDeviceCoords(mouseX,mouseY);
 		Vector4f clipCoords = new Vector4f(normalizedCoords.x, normalizedCoords.y, -1f, 1f);
 		Vector4f eyeCoords = toEyeSpace(clipCoords);
@@ -156,8 +157,8 @@ public class MousePicker {
 	
 	private Vector2f getNormalizedDeviceCoords(float mouseX, float mouseY)
 	{
-		float x = (2f*mouseX) / Window.getWidth() - 1f;
-		float y = (2f*mouseY) / Window.getHeight() - 1f;
+		float x = (2f*mouseX) / Window.WIDTH - 1f;
+		float y = (2f*mouseY) / Window.HEIGHT - 1f;
 		return new Vector2f(x,-y);
 	}
 	

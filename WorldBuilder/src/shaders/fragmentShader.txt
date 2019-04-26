@@ -12,6 +12,7 @@ uniform vec3 lightColour[4];
 uniform vec3 attenuation[4];
 uniform float shineDamper;
 uniform float reflectivity;
+uniform float highlight;
 
 void main(void)
 {
@@ -44,5 +45,14 @@ void main(void)
 		discard;
 	}
 	
-	out_colour = vec4(totalDiffuse,1.0) * textureColour + vec4(totalSpecular,1.0);
+	if(highlight == 1)
+	{
+		out_colour = (vec4(totalDiffuse,1.0) *textureColour + vec4(0.0,1.0,0.0,1.0) + vec4(totalSpecular,1.0)) * vec4(0.0,1.0,0.0,0.3);
+	}
+	else
+	{
+		out_colour = vec4(totalDiffuse,1.0) * textureColour + vec4(totalSpecular,1.0);
+	}
+	
+	
 }

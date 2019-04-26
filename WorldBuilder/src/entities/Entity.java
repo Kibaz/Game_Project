@@ -20,6 +20,8 @@ public class Entity {
 	private boolean clickable = false;
 	private boolean clicked = false;
 	
+	private boolean highlighted = false;
+	
 	private float clickRange = 7.5f;
 	
 	private int textureIndex = 0;
@@ -128,6 +130,16 @@ public class Entity {
 
 	public void setClickable(boolean clickable) {
 		this.clickable = clickable;
+	}
+	
+	public boolean isHighlighted()
+	{
+		return highlighted;
+	}
+	
+	public void setHighlighted(boolean highlighted)
+	{
+		this.highlighted = highlighted;
 	}
 	
 	public float getClickRange()

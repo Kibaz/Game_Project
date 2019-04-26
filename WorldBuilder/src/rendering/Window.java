@@ -22,10 +22,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileSystemView;
 
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 
@@ -33,6 +31,7 @@ import animation.AnimatedCharacter;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
+import inputs.MousePicker;
 import lwjglToAWT.AWTGLCanvas;
 import lwjglToAWT.GLData;
 import models.BaseModel;
@@ -45,22 +44,20 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.JLabel;
 import javax.swing.JButton;
-import java.awt.FlowLayout;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.JToolBar;
-import javax.swing.JFormattedTextField;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import java.awt.Color;
 import javax.swing.UIManager;
+import java.awt.CardLayout;
 
 
 public class Window extends JFrame implements MouseListener,MouseMotionListener,MouseWheelListener{
@@ -79,6 +76,12 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 	private static float mouseDX;
 	private static float mouseDY;
 	
+	private static float mouseX = 0;
+	private static float mouseY = 0;
+	
+	private static int leftMouseState = MouseEvent.MOUSE_RELEASED;
+	private static int rightMouseState = MouseEvent.MOUSE_RELEASED;
+	
 	private Map<Integer,Object[]> entityQueue;
 	
 	private List<Terrain> terrains = new ArrayList<>();
@@ -93,6 +96,8 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 	private Loader loader;
 	private JTextField entObjFile;
 	private JTextField entTextureFile;
+	
+	private MousePicker picker;
 	
 	public Window(Loader loader)
 	{
@@ -126,6 +131,7 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 				terrainTex.setReflectivity(0);
 				terrains.add(new Terrain(0,0,loader,terrainTex,"heightmap"));*/
 				renderer = new AdvancedRenderer(loader,camera);
+				picker = new MousePicker(camera,renderer.getProjectionMatrix(),null);
 			}
 
 			@Override
@@ -144,6 +150,8 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 					it.remove();
 				}
 				camera.move();
+				
+				picker.update(entities);
 				renderer.renderScene(entities, terrains, animChars, lights, camera, new Vector4f(0,-1f,0,0));
 				
 				
@@ -153,13 +161,17 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 			
 		}, BorderLayout.CENTER);
 		
+		
+		JPanel panelSwapper = new JPanel();
+		getContentPane().add(panelSwapper, BorderLayout.EAST);
+		panelSwapper.setLayout(new CardLayout(0, 0));
+		panelSwapper.setVisible(false);
+		
 		JPanel entityCreator = new JPanel();
 		entityCreator.setBackground(Color.DARK_GRAY);
 		Border entityPanelBorder = BorderFactory.createTitledBorder("Entity Creator");
 		((TitledBorder) entityPanelBorder).setTitleJustification(TitledBorder.CENTER);
-		getContentPane().add(entityCreator, BorderLayout.EAST);
 		entityCreator.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"), "Entity Creator", TitledBorder.CENTER, TitledBorder.TOP, null, Color.WHITE));
-		entityCreator.setVisible(false);
 		
 		JLabel lblModel = new JLabel("Model:");
 		lblModel.setForeground(Color.WHITE);
@@ -189,8 +201,7 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				entityCreator.setVisible(false);
-				
+				panelSwapper.setVisible(false);
 			}
 			
 		});
@@ -397,12 +408,130 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 					.addContainerGap())
 		);
 		entityCreator.setLayout(gl_entityCreator);
+		panelSwapper.add(entityCreator, "entityCreator");
+		
+		JPanel lightCreator = new JPanel();
+		lightCreator.setBorder(new TitledBorder(null, "Light Creator", TitledBorder.CENTER, TitledBorder.TOP, null, Color.WHITE));
+		lightCreator.setBackground(Color.DARK_GRAY);
+		panelSwapper.add(lightCreator, "lightCreator");
+		
+		JLabel lblLightPositionX = new JLabel("Position X:");
+		lblLightPositionX.setForeground(Color.WHITE);
+		
+		JSpinner lightPosXField = new JSpinner();
+		lightPosXField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JLabel lblLightPositionY = new JLabel("Position Y:");
+		lblLightPositionY.setForeground(Color.WHITE);
+		
+		JSpinner lightPosYField = new JSpinner();
+		lightPosYField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JLabel lblLightPositionZ = new JLabel("Position Z:");
+		lblLightPositionZ.setForeground(Color.WHITE);
+		
+		JSpinner lightPosZField = new JSpinner();
+		lightPosZField.setModel(new SpinnerNumberModel(new Float(0), null, null, new Float(1)));
+		
+		JLabel lblLightColourR = new JLabel("Colour R:");
+		lblLightColourR.setForeground(Color.WHITE);
+		
+		JSpinner lightColourRField = new JSpinner();
+		lightColourRField.setModel(new SpinnerNumberModel(new Float(0), new Float(0), new Float(1), new Float(0.05)));
+		
+		JLabel lblLightColourG = new JLabel("Colour G:");
+		lblLightColourG.setForeground(Color.WHITE);
+		
+		JSpinner lightColourGField = new JSpinner();
+		lightColourGField.setModel(new SpinnerNumberModel(new Float(0), new Float(0), new Float(1), new Float(0.05)));
+		
+		JLabel lblLightColourB = new JLabel("Colour B:");
+		lblLightColourB.setForeground(Color.WHITE);
+		
+		JSpinner lightColourBField = new JSpinner();
+		lightColourBField.setModel(new SpinnerNumberModel(new Float(0), new Float(0), new Float(1), new Float(0.05)));
+		
+		JButton createLightBtn = new JButton("Create");
+		createLightBtn.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				float posX = (float) lightPosXField.getValue();
+				float posY = (float) lightPosYField.getValue();
+				float posZ = (float) lightPosZField.getValue();
+				float r = (float) lightColourRField.getValue();
+				float g = (float) lightColourGField.getValue();
+				float b = (float) lightColourBField.getValue();
+				Light light = new Light(new Vector3f(posX,posY,posZ),new Vector3f(r,g,b));
+				lights.add(light);
+				
+			}
+			
+		});
+		GroupLayout gl_lightCreator = new GroupLayout(lightCreator);
+		gl_lightCreator.setHorizontalGroup(
+			gl_lightCreator.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_lightCreator.createSequentialGroup()
+					.addContainerGap()
+					.addGroup(gl_lightCreator.createParallelGroup(Alignment.LEADING)
+						.addComponent(createLightBtn, GroupLayout.DEFAULT_SIZE, 297, Short.MAX_VALUE)
+						.addGroup(gl_lightCreator.createSequentialGroup()
+							.addGroup(gl_lightCreator.createParallelGroup(Alignment.LEADING, false)
+								.addComponent(lblLightPositionZ, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+								.addComponent(lblLightPositionY, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+								.addComponent(lblLightPositionX, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 56, Short.MAX_VALUE))
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addGroup(gl_lightCreator.createParallelGroup(Alignment.TRAILING)
+								.addComponent(lightPosXField, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE)
+								.addComponent(lightPosYField, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE)
+								.addComponent(lightPosZField, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE))
+							.addGap(18)
+							.addGroup(gl_lightCreator.createParallelGroup(Alignment.LEADING)
+								.addGroup(gl_lightCreator.createSequentialGroup()
+									.addComponent(lblLightColourR, GroupLayout.PREFERRED_SIZE, 54, GroupLayout.PREFERRED_SIZE)
+									.addPreferredGap(ComponentPlacement.RELATED)
+									.addComponent(lightColourRField, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE))
+								.addGroup(gl_lightCreator.createSequentialGroup()
+									.addComponent(lblLightColourG, GroupLayout.PREFERRED_SIZE, 54, GroupLayout.PREFERRED_SIZE)
+									.addPreferredGap(ComponentPlacement.RELATED)
+									.addComponent(lightColourGField, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE))
+								.addGroup(gl_lightCreator.createSequentialGroup()
+									.addComponent(lblLightColourB, GroupLayout.PREFERRED_SIZE, 54, GroupLayout.PREFERRED_SIZE)
+									.addPreferredGap(ComponentPlacement.RELATED)
+									.addComponent(lightColourBField, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE)))
+							.addGap(11)))
+					.addContainerGap())
+		);
+		gl_lightCreator.setVerticalGroup(
+			gl_lightCreator.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_lightCreator.createSequentialGroup()
+					.addContainerGap()
+					.addGroup(gl_lightCreator.createParallelGroup(Alignment.BASELINE)
+						.addComponent(lblLightPositionX)
+						.addComponent(lightPosXField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblLightColourR)
+						.addComponent(lightColourRField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addGroup(gl_lightCreator.createParallelGroup(Alignment.BASELINE)
+						.addComponent(lblLightPositionY)
+						.addComponent(lightPosYField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblLightColourG)
+						.addComponent(lightColourGField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addGroup(gl_lightCreator.createParallelGroup(Alignment.BASELINE)
+						.addComponent(lblLightPositionZ)
+						.addComponent(lightPosZField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblLightColourB)
+						.addComponent(lightColourBField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+					.addGap(18)
+					.addComponent(createLightBtn)
+					.addContainerGap(693, Short.MAX_VALUE))
+		);
+		lightCreator.setLayout(gl_lightCreator);
 		
 		glCanvas.addMouseMotionListener(this);
 		glCanvas.addMouseListener(this);
 		glCanvas.addMouseWheelListener(this);
-		
-		pack();
 		
 		JMenuBar menuBar = new JMenuBar();
 		menuBar.setForeground(Color.BLACK);
@@ -410,6 +539,7 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		setJMenuBar(menuBar);
 		
 		JMenu mnFile = new JMenu("File");
+		mnFile.getPopupMenu().setLightWeightPopupEnabled(false);
 		mnFile.setForeground(Color.WHITE);
 		menuBar.add(mnFile);
 		
@@ -428,6 +558,7 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		mnFile.add(mntmSave);
 		
 		JMenu mnEntity = new JMenu("Entities");
+		mnEntity.getPopupMenu().setLightWeightPopupEnabled(false);
 		mnEntity.setForeground(Color.WHITE);
 		menuBar.add(mnEntity);
 		
@@ -439,13 +570,16 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				entityCreator.setVisible(true);
+				CardLayout c1 = (CardLayout) panelSwapper.getLayout();
+				c1.show(panelSwapper, "entityCreator");
+				panelSwapper.setVisible(true);
 			}
 			
 		});
 		mnEntity.add(mntmCreate);
 		
 		JMenu mnTerrain = new JMenu("Terrains");
+		mnTerrain.getPopupMenu().setLightWeightPopupEnabled(false);
 		mnTerrain.setForeground(Color.WHITE);
 		menuBar.add(mnTerrain);
 		
@@ -453,13 +587,28 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		mnTerrain.add(mntmImport_1);
 		
 		JMenu mnLights = new JMenu("Lights");
+		mnLights.getPopupMenu().setLightWeightPopupEnabled(false);
 		mnLights.setForeground(Color.WHITE);
 		menuBar.add(mnLights);
 		
 		JMenuItem mntmImport_2 = new JMenuItem("Import");
 		mnLights.add(mntmImport_2);
-		this.setVisible(true);
-		this.transferFocus();
+		
+		JMenuItem createLightsMntm = new JMenuItem("Create");
+		createLightsMntm.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				CardLayout c1 = (CardLayout) panelSwapper.getLayout();
+				c1.show(panelSwapper, "lightCreator");
+				panelSwapper.setVisible(true);
+			}
+			
+		});
+		mnLights.add(createLightsMntm);
+		pack();
+		setVisible(true);
+		transferFocus();
 		lastTimeInterval = System.currentTimeMillis();
 		
 		Runnable renderLoop = new Runnable() {
@@ -496,6 +645,26 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		return mouseDY;
 	}
 	
+	public static int getLeftMouseState()
+	{
+		return leftMouseState;
+	}
+	
+	public static int getRightMouseState()
+	{
+		return rightMouseState;
+	}
+	
+	public static float getMouseX()
+	{
+		return mouseX;
+	}
+	
+	public static float getMouseY()
+	{
+		return mouseY;
+	}
+	
 	public static void update()
 	{
 		long currTime = System.currentTimeMillis();
@@ -526,12 +695,15 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 			camera.calcPitch(pitch);
 		}
 		
+		mouseX = event.getX();
+		mouseY = event.getY();
 		
 	}
 
 	@Override
 	public void mouseMoved(MouseEvent event) {
-		
+		mouseX = event.getX();
+		mouseY = event.getY();
 	}
 
 	@Override
@@ -558,12 +730,32 @@ public class Window extends JFrame implements MouseListener,MouseMotionListener,
 		
 		// Set mouse button pressed
 		mouseButtons[event.getButton()] = true;
+		
+		if(event.getButton() == MouseEvent.BUTTON1)
+		{
+			leftMouseState = MouseEvent.MOUSE_PRESSED;
+		}
+		
+		if(event.getButton() == MouseEvent.BUTTON3)
+		{
+			rightMouseState = MouseEvent.MOUSE_PRESSED;
+		}
 	}
 
 	@Override
 	public void mouseReleased(MouseEvent event) {
 		// Set mouse button released
 		mouseButtons[event.getButton()] = false;
+		
+		if(event.getButton() == MouseEvent.BUTTON1)
+		{
+			leftMouseState = MouseEvent.MOUSE_RELEASED;
+		}
+		
+		if(event.getButton() == MouseEvent.BUTTON3)
+		{
+			rightMouseState = MouseEvent.MOUSE_RELEASED;
+		}
 	}
 
 	@Override

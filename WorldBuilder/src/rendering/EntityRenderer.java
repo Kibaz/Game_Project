@@ -62,6 +62,8 @@ public class EntityRenderer {
 		shader.loadShineVariables(texture.getShineDamper(),texture.getReflectivity());
 		GL13.glActiveTexture(GL13.GL_TEXTURE0);
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, model.getTexture().getTextureID());
+		GL11.glEnable(GL11.GL_BLEND);
+		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 	}
 	
 	private void unbindTexturedModel()
@@ -71,6 +73,7 @@ public class EntityRenderer {
 		GL20.glDisableVertexAttribArray(1);
 		GL20.glDisableVertexAttribArray(2);
 		GL30.glBindVertexArray(0);
+		GL11.glDisable(GL11.GL_BLEND);
 	}
 	
 	private void prepareEntity(Entity entity)
@@ -79,6 +82,7 @@ public class EntityRenderer {
 				entity.getRotX(),entity.getRotY(), entity.getRotZ(), entity.getScale());
 		shader.loadTransformationMatrix(transformationMatrix);
 		shader.loadOffset(entity.getTextureXOffset(), entity.getTextureYOffset());
+		shader.loadHighlight(entity.isHighlighted());
 	}
 
 }

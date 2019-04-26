@@ -30,6 +30,7 @@ public class BasicShader extends ShaderProgram {
 	private int location_numRows;
 	private int location_offset;
 	private int location_plane;
+	private int location_highlight;
 	
 	public BasicShader()
 	{
@@ -54,6 +55,7 @@ public class BasicShader extends ShaderProgram {
 		location_offset = super.getUniformLocation("offset");
 		location_fakeLighting = super.getUniformLocation("useFakeLighting");
 		location_plane = super.getUniformLocation("plane");
+		location_highlight = super.getUniformLocation("highlight");
 		
 		location_lightPosition = new int[MAX_LIGHTS];
 		location_lightColour = new int[MAX_LIGHTS];
@@ -124,6 +126,11 @@ public class BasicShader extends ShaderProgram {
 	public void loadProjectionMatrix(Matrix4f projection)
 	{
 		super.loadMatrix(location_projectionMatrix, projection);
+	}
+	
+	public void loadHighlight(boolean highlighted)
+	{
+		super.loadBoolean(location_highlight, highlighted);
 	}
 	
 	
