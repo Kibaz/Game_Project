@@ -10,6 +10,8 @@ public class Bone {
 	
 	private Matrix4f offsetMatrix;
 	
+	private Matrix4f finalTransform;
+	
 	public Bone(int boneId, String boneName, Matrix4f offsetMatrix)
 	{
 		this.boneId = boneId;
@@ -27,6 +29,16 @@ public class Bone {
 
 	public Matrix4f getOffsetMatrix() {
 		return offsetMatrix;
+	}
+	
+	public Matrix4f getFinalTransform()
+	{
+		return finalTransform;
+	}
+	
+	public void setFinalTransform(Matrix4f transform)
+	{
+		this.finalTransform = transform;
 	}
 	
 	

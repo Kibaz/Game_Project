@@ -1,8 +1,6 @@
 package shaders;
 
 import org.lwjgl.util.vector.Matrix4f;
-
-import animation.AnimEntity;
 import entities.Camera;
 import entities.Light;
 import utils.Maths;

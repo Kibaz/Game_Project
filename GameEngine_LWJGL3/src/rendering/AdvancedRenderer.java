@@ -7,15 +7,18 @@ import java.util.Map;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector4f;
-import animation.AnimatedCharacter;
+
+import animation.AnimatedEntity;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
 import models.TexturedModel;
 import shaders.AnimatedModelShader;
 import shaders.BasicShader;
+import shaders.StencilShader;
 import shaders.TerrainShader;
 import shadowMapping.ShadowRenderer;
 import skybox.SkyboxRenderer;
@@ -36,6 +39,7 @@ public class AdvancedRenderer {
 	private boolean applyCausticEffect;
 	
 	private BasicShader shader = new BasicShader();
+	private StencilShader stencilShader = new StencilShader();
 	private EntityRenderer renderer;
 	
 	private TerrainRenderer terrainRenderer;
@@ -51,13 +55,13 @@ public class AdvancedRenderer {
 	private Map<TexturedModel,List<Entity>> entities = new HashMap<TexturedModel,List<Entity>>(); // Store entities with reference to their model
 	private List<Terrain> terrains = new ArrayList<Terrain>(); // Store list of terrains to be rendered
 	
-	private List<AnimatedCharacter> animatedCharacters = new ArrayList<>();
+	private List<AnimatedEntity> animatedEntities = new ArrayList<>();
 
 	public AdvancedRenderer(Loader loader, Camera camera)
 	{
 		enableCulling();
 		createProjectionMatrix();
-		renderer = new EntityRenderer(shader, projectionMatrix);
+		renderer = new EntityRenderer(shader,stencilShader,projectionMatrix);
 		terrainRenderer = new TerrainRenderer(terrainShader, projectionMatrix);
 		animRenderer = new AnimationRenderer(animShader, projectionMatrix);
 		skyboxRenderer = new SkyboxRenderer(loader, projectionMatrix);
@@ -75,7 +79,7 @@ public class AdvancedRenderer {
 		GL11.glDisable(GL11.GL_CULL_FACE);
 	}
 	
-	public void renderScene(List<Entity> entities, List<Terrain> terrains, List<AnimatedCharacter> animatedCharacters, List<Light> lights, Camera camera, Vector4f clipPlane)
+	public void renderScene(List<Entity> entities, List<Terrain> terrains, List<AnimatedEntity> animEntities, List<Light> lights, Camera camera, Vector4f clipPlane)
 	{
 		for(Terrain terrain: terrains)
 		{
@@ -87,9 +91,9 @@ public class AdvancedRenderer {
 			processEntity(entity);
 		}
 		
-		for(AnimatedCharacter animCharacter: animatedCharacters)
+		for(AnimatedEntity animEntity: animEntities)
 		{
-			processAnimatedCharacter(animCharacter);
+			processAnimatedEntity(animEntity);
 		}
 		
 		render(lights, camera,clipPlane);
@@ -102,8 +106,11 @@ public class AdvancedRenderer {
 		shader.loadClipPlane(clipPlane);
 		shader.loadLights(lights);
 		shader.loadViewMatrix(camera);
-		renderer.render(entities);
 		shader.stop();
+		stencilShader.start();
+		stencilShader.loadViewMatrix(camera);
+		stencilShader.stop();
+		renderer.render(entities);
 		terrainShader.start();
 		terrainShader.loadClipPlane(clipPlane);
 		terrainShader.loadLights(lights);
@@ -122,14 +129,12 @@ public class AdvancedRenderer {
 		terrainShader.stop();
 		skyboxRenderer.render(camera, RED, GREEN, BLUE);
 		animShader.start();
-		//animShader.loadLight(sun);
 		animShader.loadViewMatrix(camera);
-		//animShader.loadMatrixArray(entity.getAnimationTransforms());
-		animRenderer.render(animatedCharacters);
+		animRenderer.render(animatedEntities.get(0));
 		animShader.stop();
 		terrains.clear();
 		entities.clear();
-		animatedCharacters.clear();
+		animatedEntities.clear();
 	}
 	
 	public void processTerrain(Terrain terrain)
@@ -137,16 +142,17 @@ public class AdvancedRenderer {
 		terrains.add(terrain);
 	}
 	
-	public void processAnimatedCharacter(AnimatedCharacter animChar)
+	public void processAnimatedEntity(AnimatedEntity animEntity)
 	{
-		animatedCharacters.add(animChar);
+		animatedEntities.add(animEntity);
 	}
+	
 	
 	public void prepare()
 	{
 		GL11.glEnable(GL11.GL_DEPTH_TEST);
-		GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 		GL11.glClearColor(0.0f, 0.0f, 0.1f, 0.0f);
+		GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 		GL13.glActiveTexture(GL13.GL_TEXTURE2);
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, getShadowMapTexture());
 	}

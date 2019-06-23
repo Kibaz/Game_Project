@@ -40,12 +40,20 @@ public class TextController {
 			textBatch = new ArrayList<>();
 			texts.put(font, textBatch);
 		}
+		if(textBatch.contains(text))
+		{
+			return;
+		}
 		textBatch.add(text);
 	}
 	
 	public static void removeText(GUIText text)
 	{
 		List<GUIText> textBatch = texts.get(text.getFont());
+		if(textBatch == null)
+		{
+			return;
+		}
 		textBatch.remove(text);
 		if(textBatch.isEmpty())
 		{

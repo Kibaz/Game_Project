@@ -91,16 +91,8 @@ public class PairManager {
 	
 	public boolean isEqual(PairManager other)
 	{
-		// Retrieve AABBs of Pair method invoked on
-		AABB thisFirst = this.getFirst().getAABB();
-		AABB thisSecond = this.getSecond().getAABB();
-		
-		// Retrieve AABBs of comparison Pair
-		AABB otherFirst = other.getFirst().getAABB();
-		AABB otherSecond = other.getSecond().getAABB();
-		
-		if((thisFirst.isEqual(otherFirst) && thisSecond.isEqual(otherSecond)) ||
-				(thisFirst.isEqual(otherFirst) && thisSecond.isEqual(otherSecond)))
+		if((this.getFirst().equals(other.getFirst()) && this.getSecond().equals(other.getSecond())) ||
+				(this.getFirst().equals(other.second) && this.getSecond().equals(other.getFirst())))
 		{
 			return true;
 		}

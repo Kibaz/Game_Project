@@ -2,6 +2,8 @@ package models;
 
 import org.lwjgl.util.vector.Vector3f;
 
+import texturing.Material;
+
 public class BaseModel {
 	
 	private int vaoID;
@@ -9,6 +11,8 @@ public class BaseModel {
 	
 	private float[] vertices;
 	private int[] indices;
+	
+	private Material material;
 	
 	public BaseModel(int ID, int vertCount, float[] vertices, int[] indices)
 	{
@@ -114,7 +118,7 @@ public class BaseModel {
 	{
 		Vector3f centre;
 		float midPointX = findMinVertex().x + ((findMaxVertex().x - findMinVertex().x)/2);
-		float midPointY =findMinVertex().y + ((findMaxVertex().y - findMinVertex().y)/2);
+		float midPointY = findMinVertex().y + ((findMaxVertex().y - findMinVertex().y)/2);
 		float midPointZ = findMinVertex().z + ((findMaxVertex().z - findMinVertex().z)/2);
 		centre = new Vector3f(midPointX, midPointY, midPointZ);
 		return centre;
@@ -151,6 +155,16 @@ public class BaseModel {
 		length = max.z - min.z;
 		
 		return length;
+	}
+	
+	public Material getMaterial()
+	{
+		return material;
+	}
+	
+	public void setMaterial(Material material)
+	{
+		this.material = material;
 	}
 	
 	public int compareTo(BaseModel other)

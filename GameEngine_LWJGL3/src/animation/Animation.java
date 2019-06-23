@@ -1,80 +1,43 @@
 package animation;
 
-import java.util.List;
-
-import org.lwjgl.util.vector.Matrix4f;
-
-import models.BaseModel;
-
 public class Animation {
-	
-	private int currFrame;
-	
-	private List<AnimatedFrame> frames;
-	
-	private BaseModel[] models;
-	
-	private String name;
 	
 	private double duration;
 	
-	public Animation(String name, List<AnimatedFrame> frames, double duration)
+	private double ticksPerSecond;
+	
+	private String name;
+	
+	private Node rootNode;
+	
+	public Animation(String name,double ticksPerSecond,double duration, Node rootNode)
 	{
 		this.name = name;
-		this.frames = frames;
-		currFrame = 0;
 		this.duration = duration;
+		this.rootNode = rootNode;
+		this.ticksPerSecond = ticksPerSecond;
 	}
 
-	public AnimatedFrame getCurrentFrame() {
-		return this.frames.get(currFrame);
-	}
-	
-	public int getCurrFrameIndex()
-	{
-		return currFrame;
-	}
-	
-	public AnimatedFrame getNextFrame()
-	{
-		nextFrame();
-		return this.frames.get(currFrame);
-	}
-
-	public List<AnimatedFrame> getFrames() {
-		return frames;
+	public double getDuration() {
+		return duration;
 	}
 
 	public String getName() {
 		return name;
 	}
 
-	public double getDuration() {
-		return duration;
+	public Node getRootNode() {
+		return rootNode;
+	}
+
+	public double getTicksPerSecond() {
+		return ticksPerSecond;
 	}
 	
-	public BaseModel[] getModels()
-	{
-		return models;
-	}
 	
-	public void setModels(BaseModel[] models)
-	{
-		this.models = models;
-	}
 	
-	public void nextFrame()
-	{
-		int nextFrame = currFrame + 1;
-		if(nextFrame > frames.size() - 1)
-		{
-			currFrame = 0;
-		}
-		else
-		{
-			currFrame = nextFrame;
-		}
-	}
+	
+	
 	
 
 }

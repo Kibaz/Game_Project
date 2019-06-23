@@ -1,22 +1,15 @@
 package entities;
-
-import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
-
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
-
-import fontRendering.TextController;
-import fontUtils.FontStyle;
-import fontUtils.GUIText;
-import guis.GUITexture;
+import animation.AnimatedEntity;
+import guis.CharacterUIFrame;
+import inputs.Input;
+import inputs.KeyInput;
 import inputs.KeyboardHandler;
-import inputs.MouseButton;
 import models.TexturedModel;
 import networking.Client;
-import pathfinding.GridSquare;
 import physics.AABB;
 import physics.CollisionTest;
 import physics.Ellipsoid;
@@ -27,12 +20,11 @@ import physics.Utils;
 import rendering.Loader;
 import rendering.Window;
 import terrains.Terrain;
-import utils.DataTransfer;
 import water.WaterPlane;
 import worldData.World;
 import worldData.Zone;
 
-public class Player extends Entity{
+public class Player extends AnimatedEntity {
 	
 	// Constants
 	private static final float TURN_SPEED = 160;
@@ -42,10 +34,9 @@ public class Player extends Entity{
 	// Player combat variables
 	private float maxHealth = 100;
 	private float currentHealth = maxHealth;
-	private GUITexture healthBar;
-	private FontStyle healthTextStyle;
-	private GUIText healthInfo;
+	private int level = 1;
 	
+	private CharacterUIFrame uiFrame;
 	
 	// player movement variables
 	private float ground_speed = 20;
@@ -61,15 +52,11 @@ public class Player extends Entity{
 	private Vector3f velocityVector = new Vector3f(0,0,0);
 	
 	private boolean airborne = false;
-	private boolean inCombat = false;
+	
+	
 	private CollisionTest collTest;
 	
 	// Combat variables
-	private float baseDamage = 10;
-	private float attackSpeed = 1; // I.E time between auto attacks
-	private float autoAttackTime = 0; // Track time between auto attacks 
-	
-	private Entity currentSelectedEntity;
 	
 	// Location variables
 	private Zone currentZone;
@@ -79,11 +66,9 @@ public class Player extends Entity{
 		aabb = new AABB(this, super.getPosition());
 		ellipse = new Ellipsoid(this);
 		collTest = new CollisionTest();
-		healthBar = new GUITexture(loader.loadTexture("res/green_health_test.png"),new Vector2f(-0.85f, 0.85f), new Vector2f(0.125f, 0.02f));
-		healthTextStyle = new FontStyle(loader.loadFontTexture("res/arial.png", 0.4f), new File("res/arial.fnt"));
-		healthInfo = new GUIText(Float.toString(currentHealth),0.5f,healthTextStyle,new Vector2f(0.0625f,0.0625f),1,false);
-		healthInfo.setColour(1, 1, 1);
-		TextController.loadText(healthInfo);
+		this.uiFrame = new CharacterUIFrame(loader,level,maxHealth,0.6f,new Vector2f(-0.75f,0.9f),new Vector2f(0.2f,0.3f));
+		this.uiFrame.setHealthInfoPosition(new Vector2f(-0.375f,0.035f));
+		this.uiFrame.setLevelInfoPosition(new Vector2f(0.0125f,0.035f));
 		super.setStaticModel(false);
 	}
 	
@@ -96,13 +81,9 @@ public class Player extends Entity{
 		float distZ = (float) (distance * Math.cos(Math.toRadians(super.getRotY())));
 		//super.increasePosition(distX, 0, distZ);
 		// After increasing player's position, increase bounding box's position
-		aabb.moveAABB(distX, 0, distZ);
-		ellipse.moveCentre(distX, 0, distZ);
 		jumpSpeed += GRAVITY * Window.getFrameTime();
 		float distY = jumpSpeed * Window.getFrameTime();
 		//super.increasePosition(0, jumpSpeed * Window.getFrameTime(),0);
-		aabb.moveAABB(0, jumpSpeed * Window.getFrameTime(), 0);
-		ellipse.moveCentre(0, jumpSpeed * Window.getFrameTime(), 0);
 		for(Terrain t: terrains)
 		{
 			if(t.isEntityOnTerrain(this))
@@ -113,8 +94,6 @@ public class Player extends Entity{
 					jumpSpeed = 0;
 					distY = terrainHeight - super.getPosition().y;
 					//super.getPosition().setY(terrainHeight);
-					aabb.setY(super.getModel().getBaseModel(), super.getPosition());
-					ellipse.setY(super.getModel().getBaseModel(), super.getPosition());
 					airborne = false;
 				}
 			}
@@ -146,35 +125,9 @@ public class Player extends Entity{
 			collideAndSlide(velocityVector);
 		}
 		
-		if(inCombat)
-		{
-			attack((TestMob) currentSelectedEntity);
-		}
-		else
-		{
-			if(this.getHealth() < this.getMaxHealth())
-			{
-				this.setHealth(this.getHealth() + 0.1f);
-				if(currentHealth > this.getMaxHealth())
-				{
-					currentHealth = this.getMaxHealth();
-				}
-				float originX = this.getHealthBar().getScale().x;
-				this.getHealthBar().getScale().x = (this.getHealth() / this.getMaxHealth()) * 0.125f;
-				float currentX = this.getHealthBar().getScale().x;
-				float diff = originX - currentX;
-				this.getHealthBar().getPosition().x = this.getHealthBar().getPosition().x - diff;
-			}
-			
-		}
-		
-		TextController.removeText(healthInfo);
-		healthInfo.setContent(Float.toString((currentHealth / maxHealth) * 100));
-		TextController.loadText(healthInfo);
-
-		
 		// Ensure bounding box is always reset post collision calculations
 		this.aabb.resetBox(this.getPosition());
+		this.ellipse.reset(this.getPosition());
 	}
 	
 	private void jump()
@@ -186,53 +139,22 @@ public class Player extends Entity{
 		}
 	}
 	
-	private void attack(TestMob mob)
-	{
-		/*
-		 * Trigger auto attack
-		 * Play auto attack animation
-		 * Deal damage equal to weapon damage + stats
-		 */
-		autoAttackTime += Window.getFrameTime();
-		if(autoAttackTime > attackSpeed)
-		{
-			// Do auto attack
-			if(mob.getHealth() > 0)
-			{
-				mob.setHealth(mob.getHealth() - baseDamage); // Deal damage
-				// Calculate and animate health-bar
-				float originX = mob.getHealthBar().getScale().x;
-				mob.getHealthBar().getScale().x = (mob.getHealth() / mob.getMaxHealth()) * 0.125f;
-				float currentX = mob.getHealthBar().getScale().x;
-				float diff = originX - currentX;
-				mob.getHealthBar().getPosition().x = mob.getHealthBar().getPosition().x - diff;
-			}
-			else
-			{
-				inCombat = false;
-				mob.setAlive(false);
-			}
-			
-			
-			autoAttackTime %= attackSpeed;
-		}
-	}
-	
 	private void checkUserInput(List<Entity> entities)
 	{
 		/* Check whether a key has been pressed */
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
 		{
 			this.currentSpeed = ground_speed;
-			String msg = "w key pressed " + Window.getFrameTime();
-			Client.send(msg.getBytes());
+			// Register input
+			Input input = new KeyInput(Window.getFrameTime(),'w');
+			Client.inputs.put(input.getIndex(), input);
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
 		{
 			this.currentSpeed = -ground_speed;
-			String msg = "s key pressed " + Window.getFrameTime();
-			Client.send(msg.getBytes());
+			Input input = new KeyInput(Window.getFrameTime(), 's');
+			Client.inputs.put(input.getIndex(), input);
 		}
 		
 		else
@@ -243,15 +165,15 @@ public class Player extends Entity{
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
 		{
 			this.currentTurnSpeed = -TURN_SPEED;
-			String msg = "d key pressed " + Window.getFrameTime();
-			Client.send(msg.getBytes());
+			Input input = new KeyInput(Window.getFrameTime(), 'd');
+			Client.inputs.put(input.getIndex(), input);
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
 		{
 			this.currentTurnSpeed = TURN_SPEED;
-			String msg = "a key pressed " + Window.getFrameTime();
-			Client.send(msg.getBytes());
+			Input input = new KeyInput(Window.getFrameTime(), 'a');
+			Client.inputs.put(input.getIndex(), input);
 		}
 		else
 		{
@@ -260,23 +182,8 @@ public class Player extends Entity{
 		
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE)){
 			jump();
-			String msg = " key pressed " + Window.getFrameTime();
-			Client.send(msg.getBytes());
-		}
-		
-		if(MouseButton.isButtonDown(GLFW.GLFW_MOUSE_BUTTON_2))
-		{
-			for(Entity ent: entities)
-			{
-				if(ent.isPlayerInClickRange(this)
-					&& ent.isClickable())
-				{
-					inCombat = true;
-					ent.setClicked(true);
-					((TestMob) ent).setAttacked(true);
-					currentSelectedEntity = ent;
-				}
-			}
+			Input input = new KeyInput(Window.getFrameTime(), ' ');
+			Client.inputs.put(input.getIndex(), input);
 		}
 		
 	}
@@ -294,11 +201,6 @@ public class Player extends Entity{
 	public void setHealth(float health)
 	{
 		this.currentHealth = health;
-	}
-	
-	public GUITexture getHealthBar()
-	{
-		return healthBar;
 	}
 	
 	public Zone getCurrentZone() {
@@ -329,14 +231,9 @@ public class Player extends Entity{
 		return velocityVector;
 	}
 	
-	public void setCombatStatus(boolean inCombat)
+	public CharacterUIFrame getUIFrame()
 	{
-		this.inCombat = inCombat;
-	}
-	
-	public void setCurrentSelectedEntity(Entity entity)
-	{
-		this.currentSelectedEntity = entity;
+		return uiFrame;
 	}
 	
 	public void collideAndSlide(Vector3f velocity)
@@ -430,25 +327,31 @@ public class Player extends Entity{
 			Entity first = current.getFirst();
 			Entity second = current.getSecond();
 			Entity entity = null;
-			if(first instanceof Player)
+			if(first.equals(this))
 			{
 				entity = second;
 			}
-			else
+			
+			if(second.equals(this))
 			{
 				entity = first;
 			}
 			
-			for(int j = 0; j < entity.getTriangles().length; j++)
+			if(entity != null)
 			{
-				Vector3f p1 = entity.getTriangles()[j].getPoints()[0];
-				p1 = new Vector3f(p1.x/collTest.eRadius.x, p1.y/collTest.eRadius.y, p1.z/collTest.eRadius.z);
-				Vector3f p2 = entity.getTriangles()[j].getPoints()[1];
-				p2 = new Vector3f(p2.x/collTest.eRadius.x, p2.y/collTest.eRadius.y, p2.z/collTest.eRadius.z);
-				Vector3f p3 = entity.getTriangles()[j].getPoints()[2];
-				p3 = new Vector3f(p3.x/collTest.eRadius.x, p3.y/collTest.eRadius.y, p3.z/collTest.eRadius.z);
-				Utils.checkTriangle(collTest, p1, p2, p3);
+				for(int j = 0; j < entity.getTriangles().length; j++)
+				{
+					Vector3f p1 = entity.getTriangles()[j].getPoints()[0];
+					p1 = new Vector3f(p1.x/collTest.eRadius.x, p1.y/collTest.eRadius.y, p1.z/collTest.eRadius.z);
+					Vector3f p2 = entity.getTriangles()[j].getPoints()[1];
+					p2 = new Vector3f(p2.x/collTest.eRadius.x, p2.y/collTest.eRadius.y, p2.z/collTest.eRadius.z);
+					Vector3f p3 = entity.getTriangles()[j].getPoints()[2];
+					p3 = new Vector3f(p3.x/collTest.eRadius.x, p3.y/collTest.eRadius.y, p3.z/collTest.eRadius.z);
+					Utils.checkTriangle(collTest, p1, p2, p3);
+				}
 			}
+			
+
 		}
 	}
 }

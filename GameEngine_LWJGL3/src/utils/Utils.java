@@ -20,16 +20,53 @@ public class Utils {
 		
 		return array;
 	}
+	
+	public static float[] combineArrays(float[] first, float[] second)
+	{
+		float[] result = new float[first.length + second.length];
+		
+		int count = 0;
+		for(int i = 0; i < result.length; i++)
+		{
+			if(i < first.length)
+			{
+				result[i] = first[i];
+			}
+			else
+			{
+				result[i] = second[count];
+				count++;
+			}
+		}
+		
+		return result;
+	}
+	
+	public static int[] combineArrays(int[] first, int[] second)
+	{
+		int[] result = new int[first.length + second.length];
+		
+		int count = 0;
+		for(int i = 0; i < result.length; i++)
+		{
+			if(i < first.length)
+			{
+				result[i] = first[i];
+			}
+			else
+			{
+				result[i] = second[count];
+				count++;
+			}
+		}
+		
+		return result;
+	}
 
 	
 	public static int[] intListToArray(List<Integer> ints)
 	{
-		int[] array = new int[ints.size()];
-		for(int i = 0; i < ints.size(); i++)
-		{
-			array[i] = ints.get(i);
-		}
-		
+		int[] array = ints.stream().mapToInt((Integer i)->i).toArray();
 		return array;
 	}
 	

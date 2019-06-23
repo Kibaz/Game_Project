@@ -1,7 +1,8 @@
 package physics;
 
+import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
-
+import org.lwjgl.util.vector.Vector4f;
 import entities.Entity;
 import models.BaseModel;
 
@@ -9,7 +10,7 @@ public class AABB {
 
 	// Axis Aligned Bounding Box Class
 	
-	private Vector3f minPoint, maxPoint, centre;
+	private Vector3f minPoint, maxPoint, centre, rotation;
 	private float minX, minY, minZ, maxX, maxY, maxZ, width, height, zWidth;
 	
 	// Keep track of end points
@@ -27,12 +28,13 @@ public class AABB {
 		this.width = entity.getModel().getBaseModel().getModelWidth();
 		this.height = entity.getModel().getBaseModel().getModelHeight();
 		this.zWidth = entity.getModel().getBaseModel().getModelZWidth();
-		this.minX = (minPoint.x * entity.getScale() + pos.x);
-		this.minY = (minPoint.y * entity.getScale() + pos.y);
-		this.minZ = (minPoint.z * entity.getScale() + pos.z);
-		this.maxX = (maxPoint.x * entity.getScale() + pos.x);
-		this.maxY = (maxPoint.y * entity.getScale() + pos.y);
-		this.maxZ = (maxPoint.z * entity.getScale() + pos.z);
+		float scale = entity.getScale();
+		this.minX = (minPoint.x * scale + pos.x);
+		this.minY = (minPoint.y * scale + pos.y);
+		this.minZ = (minPoint.z * scale + pos.z);
+		this.maxX = (maxPoint.x * scale + pos.x);
+		this.maxY = (maxPoint.y * scale + pos.y);
+		this.maxZ = (maxPoint.z * scale + pos.z);
 		this.minPoint = new Vector3f(minX,minY,minZ);
 		this.maxPoint = new Vector3f(maxX,maxY,maxZ);
 		this.centre = entity.getModel().getBaseModel().calculateCentre();
@@ -44,6 +46,7 @@ public class AABB {
 				new EndPoint(this, minPoint.y, true),new EndPoint(this, minPoint.z, true)};
 		this.maxPoints = new EndPoint[] {new EndPoint(this, maxPoint.x, false),
 				new EndPoint(this, maxPoint.y, false),new EndPoint(this, maxPoint.z, false)};
+		this.rotation = new Vector3f(0,0,0);
 	}
 
 	public Vector3f getMinPoint() {
@@ -72,6 +75,11 @@ public class AABB {
 	public float getZWidth()
 	{
 		return zWidth;
+	}
+	
+	public void setRotation(float x, float y, float z)
+	{
+		this.rotation = new Vector3f(x,y,z);
 	}
 	
 	public boolean intersectsAABB(AABB other)
@@ -119,6 +127,8 @@ public class AABB {
 	{
 		float distA = this.minPoint.z - other.maxPoint.z;
 		float distB = other.minPoint.z - this.maxPoint.z;
+		//System.out.println("A: " + distA);
+		//System.out.println("B: " + distB);
 		if(distA > 0 || distB > 0)
 		{
 			return false;
@@ -130,8 +140,16 @@ public class AABB {
 	public void resetBox(Vector3f position)
 	{
 		BaseModel model = this.entity.getModel().getBaseModel();
+		Matrix4f rotMatrix = new Matrix4f();
+		Matrix4f.rotate((float) Math.toRadians(rotation.z), new Vector3f(0,0,1), rotMatrix, rotMatrix);
+		Matrix4f.rotate((float) Math.toRadians(rotation.y), new Vector3f(0,1,0), rotMatrix, rotMatrix);
+		Matrix4f.rotate((float) Math.toRadians(rotation.x), new Vector3f(1,0,0), rotMatrix, rotMatrix);
 		this.minPoint = model.findMinVertex();
 		this.maxPoint = model.findMaxVertex();
+		Vector4f tempMin = Matrix4f.transform(rotMatrix, new Vector4f(minPoint.x,minPoint.y,minPoint.z,1.0f), null);
+		Vector4f tempMax = Matrix4f.transform(rotMatrix, new Vector4f(maxPoint.x,maxPoint.y,maxPoint.z,1.0f), null);
+		this.minPoint = new Vector3f(tempMin.x,tempMin.y,tempMin.z);
+		this.maxPoint = new Vector3f(tempMax.x,tempMax.y,tempMax.z);
 		this.minX = (minPoint.x + position.x);
 		this.minY = (minPoint.y + position.y);
 		this.minZ = (minPoint.z + position.z);
@@ -140,6 +158,15 @@ public class AABB {
 		this.maxZ = (maxPoint.z + position.z);
 		this.minPoint = new Vector3f(minX,minY,minZ);
 		this.maxPoint = new Vector3f(maxX,maxY,maxZ);
+		float maxX = maxPoint.x > minPoint.x ? maxPoint.x : minPoint.x;
+		float maxY = maxPoint.y > minPoint.y ? maxPoint.y : minPoint.y;
+		float maxZ = maxPoint.z > minPoint.z ? maxPoint.z : minPoint.z;
+		float minX = maxPoint.x < minPoint.x ? maxPoint.x : minPoint.x;
+		float minY = maxPoint.y < minPoint.y ? maxPoint.y : minPoint.y;
+		float minZ = maxPoint.z < minPoint.z ? maxPoint.z : minPoint.z;
+		this.minPoint = new Vector3f(minX,minY,minZ);
+		this.maxPoint = new Vector3f(maxX,maxY,maxZ);
+		updateEndPoints();
 	}
 	
 	// For entities which move position

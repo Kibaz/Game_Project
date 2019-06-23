@@ -24,7 +24,7 @@ public class GUIRenderer {
 		shader = new GUIShader();
 	}
 	
-	public void render(List<GUITexture> guis)
+	public void render(List<GUI> guis)
 	{
 		shader.start();
 		GL30.glBindVertexArray(quad.getVaoID());
@@ -32,13 +32,17 @@ public class GUIRenderer {
 		GL11.glEnable(GL11.GL_BLEND);
 		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 		GL11.glDisable(GL11.GL_DEPTH_TEST);
-		for(GUITexture gui: guis)
+		for(GUI gui: guis)
 		{
-			GL13.glActiveTexture(GL13.GL_TEXTURE0);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, gui.getTexture());
-			Matrix4f matrix = Maths.createTransformationMatrix(gui.getPosition(),gui.getScale());
-			shader.loadTransformationMatrix(matrix);
-			GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, quad.getVertCount());
+			if(gui.isVisible())
+			{
+				GL13.glActiveTexture(GL13.GL_TEXTURE0);
+				GL11.glBindTexture(GL11.GL_TEXTURE_2D, gui.getGUITexture().getTexture());
+				Matrix4f matrix = Maths.createTransformationMatrix(gui.getGUITexture().getPosition(),gui.getGUITexture().getScale());
+				shader.loadHovered(gui.isHovered());
+				shader.loadTransformationMatrix(matrix);
+				GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, quad.getVertCount());
+			}
 		}
 		GL11.glDisable(GL11.GL_BLEND);
 		GL11.glEnable(GL11.GL_DEPTH_TEST);

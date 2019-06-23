@@ -1,40 +1,29 @@
 package physics;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
-import org.lwjgl.util.vector.Vector4f;
 
-import entities.Player;
-import models.BaseModel;
+import entities.Entity;
+import utils.Maths;
 
 public class Ellipsoid {
+	private Vector3f centre;
+	private Vector3f radius; // Store radius X, Y & Z
+	private Entity entity;
 	
-	private Vector3f position; // Store centre of Ellipsoid
-	private static Vector3f centre;
-	private static Vector3f radius; // Store radius X, Y & Z
-	private static Player player;
+	private Vector3f rotation;
 	
 	// Transformed Model information
-	private static float[] vertices;
-	private static int[] indices;
+	private float[] vertices;
 	
-	public Ellipsoid(Player player)
+	public Ellipsoid(Entity entity)
 	{
-		this.player = player;
-		this.centre = this.player.getModel().getBaseModel().calculateCentre();
-		centre.x += player.getPosition().x;
-		centre.y += player.getPosition().y;
-		centre.z += player.getPosition().z;
-		this.position = this.player.getPosition();
-		float xRadius = this.player.getModel().getBaseModel().getModelWidth() / 2;
-		float yRadius = this.player.getModel().getBaseModel().getModelHeight() / 2;
-		float zRadius = (this.player.getModel().getBaseModel().getModelZWidth())/ 2;
+		this.entity = entity;
+		this.centre = this.entity.getModel().getBaseModel().calculateCentre();
+		float xRadius = this.entity.getModel().getBaseModel().getModelWidth() / 2;
+		float yRadius = this.entity.getModel().getBaseModel().getModelHeight() / 2;
+		float zRadius = (this.entity.getModel().getBaseModel().getModelZWidth())/ 2;
 		this.radius = new Vector3f(xRadius, yRadius, zRadius);
-		this.vertices = this.player.getModel().getBaseModel().getVertices();
-		this.indices = this.player.getModel().getBaseModel().getIndices();
+		this.vertices = this.entity.getModel().getBaseModel().getVertices();
+		this.rotation = new Vector3f(0,0,0);
 	}
 	
 	public Vector3f getRadius()
@@ -47,96 +36,28 @@ public class Ellipsoid {
 		return centre;
 	}
 	
-	public Vector3f getPosition()
+	public Vector3f getRotation()
 	{
-		return position;
+		return rotation;
 	}
 	
-	public void moveCentre(float dx, float dy, float dz)
+	public void setRotation(float x, float y, float z)
 	{
-		centre.x += dx;
-		centre.y += dy;
-		centre.z += dz;
+		this.rotation = new Vector3f(x,y,z);
 	}
 	
-	public void setY(BaseModel model, Vector3f pos)
+	public void setY()
 	{
-		centre.y = model.findMinVertex().y + pos.y; 
-		centre.y = model.findMaxVertex().y + pos.y;
+		centre.y = entity.getPosition().y + radius.y;
 	}
 	
-	public static void update(Matrix4f[] transforms)
+	public void reset(Vector3f position)
 	{
-		calculateTransformedModel(transforms);
-		centre = calculateCentre();
-		radius.x = getModelWidth() / 2;
-		radius.y = getModelHeight() / 2;
-		radius.z = getModelZWidth() / 2;
+		calculateEllipsoid();
+		Vector3f.add(centre, position, centre);
 	}
 	
-	private static void calculateTransformedModel(Matrix4f[] transforms)
-	{
-		List<Vector4f> convertedVerts = new ArrayList<>();
-		int counter = 0;
-		for(int v = 0; v < vertices.length/3; v++)
-		{
-			Vector4f vector = new Vector4f(0,0,0,0);
-			vector.x = vertices[counter];
-			vector.y = vertices[counter++];
-			vector.z = vertices[counter++];
-			vector.w = 1.0f;
-			counter++;
-			convertedVerts.add(vector);
-		}
-		
-		List<Vector4f> transformedVerts = new ArrayList<>();
-		for(Vector4f vector: convertedVerts)
-		{
-			Vector4f transformedVector = new Vector4f(0,0,0,0);
-			for(int i = 0; i < transforms.length; i++)
-			{
-				transformedVector = Matrix4f.transform(transforms[i], vector, null);
-			}
-			transformedVerts.add(transformedVector);
-		}
-		
-		
-		List<Vector3f> transformed3DVerts = getTransformed3DVerts(transformedVerts);
-		counter = 0;
-		for(int i = 0; i < transformed3DVerts.size(); i++)
-		{
-			vertices[counter] = transformed3DVerts.get(i).x;
-			counter++;
-			vertices[counter] = transformed3DVerts.get(i).y;
-			counter++;
-			vertices[counter] = transformed3DVerts.get(i).z;
-			counter++;
-		}
-		
-		
-	}
-	
-	private static List<Vector3f> getTransformed3DVerts(List<Vector4f> vectors)
-	{
-		List<Vector3f> results = new ArrayList<>();
-		for(int i = 0; i < vectors.size(); i++)
-		{
-			results.add(convert4DTo3DVector(vectors.get(i)));
-		}
-		
-		return results;
-	}
-	
-	private static Vector3f convert4DTo3DVector(Vector4f vector)
-	{
-		Vector3f result = new Vector3f(0,0,0);
-		result.x = vector.x / vector.w;
-		result.y = vector.y / vector.w;
-		result.z = vector.z / vector.w;
-		return result;
-	}
-	
-	private static Vector3f findMinVertex()
+	private Vector3f findMinVertex()
 	{
 		Vector3f minVert = null;
 		float xMin = vertices[0];
@@ -163,13 +84,12 @@ public class Ellipsoid {
 			}
 			vertCounter++;
 		}
-		
-		minVert = new Vector3f(xMin, yMin, zMin);
+		minVert = Maths.rotate3DVector(new Vector3f(xMin, yMin, zMin), rotation);
 		
 		return minVert;
 	}
 	
-	private static Vector3f findMaxVertex()
+	private Vector3f findMaxVertex()
 	{
 		Vector3f maxVert = null;
 		float xMax = vertices[0];
@@ -194,52 +114,31 @@ public class Ellipsoid {
 			}
 			vertCounter++;
 		}
-		maxVert = new Vector3f(xMax, yMax, zMax);
+		maxVert = Maths.rotate3DVector(new Vector3f(xMax, yMax, zMax), rotation);
 		
 		return maxVert;
 	}
 	
-	private static Vector3f calculateCentre()
+	private void calculateEllipsoid()
 	{
-		Vector3f centre;
-		float midPointX = findMinVertex().x + ((findMaxVertex().x - findMinVertex().x)/2);
-		float midPointY =findMinVertex().y + ((findMaxVertex().y - findMinVertex().y)/2);
-		float midPointZ = findMinVertex().z + ((findMaxVertex().z - findMinVertex().z)/2);
+		Vector3f minVert = findMinVertex();
+		Vector3f maxVert = findMaxVertex();
+		float maxX = maxVert.x > minVert.x ? maxVert.x : minVert.x;
+		float maxY = maxVert.y > minVert.y ? maxVert.y : minVert.y;
+		float maxZ = maxVert.z > minVert.z ? maxVert.z : minVert.z;
+		float minX = maxVert.x < minVert.x ? maxVert.x : minVert.x;
+		float minY = maxVert.y < minVert.y ? maxVert.y : minVert.y;
+		float minZ = maxVert.z < minVert.z ? maxVert.z : minVert.z;
+		minVert = new Vector3f(minX,minY,minZ);
+		maxVert = new Vector3f(maxX,maxY,maxZ);
+		float radiusX = (maxVert.x - minVert.x)/2f;
+		float radiusY = (maxVert.y - minVert.y)/2f;
+		float radiusZ = (maxVert.z - minVert.z)/2f;
+		float midPointX = minVert.x + radiusX;
+		float midPointY = minVert.y + radiusY;
+		float midPointZ = minVert.z + radiusZ;
 		centre = new Vector3f(midPointX, midPointY, midPointZ);
-		return centre;
-	}
-	
-	private static float getModelHeight()
-	{
-		float height = 0;
-		Vector3f min = findMinVertex();
-		Vector3f max = findMaxVertex();
-		
-		height = max.y - min.y;
-		
-		return height;
-	}
-	
-	private static float getModelWidth()
-	{
-		float width = 0;
-		Vector3f min = findMinVertex();
-		Vector3f max = findMaxVertex();
-		
-		width = max.x - min.x;
-		
-		return width;
-	}
-	
-	private static float getModelZWidth()
-	{
-		float length = 0;
-		Vector3f min = findMinVertex();
-		Vector3f max = findMaxVertex();
-		
-		length = max.z - min.z;
-		
-		return length;
+		radius = new Vector3f(radiusX,radiusY,radiusZ);
 	}
 	
 	

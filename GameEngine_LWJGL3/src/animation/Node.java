@@ -1,70 +1,44 @@
 package animation;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.lwjgl.util.vector.Matrix4f;
+import org.lwjgl.util.vector.Quaternion;
+import org.lwjgl.util.vector.Vector3f;
 
 public class Node {
 	
-	private final List<Node> children;
+	private List<Node> children;
 	
-	private final List<Matrix4f> transformations;
+	private List<PositionTransform> positions;
+	private List<RotationTransform> rotations;
+	private List<ScaleTransform> scalings;
 	
-	private final String name;
+	private String name;
 	
-	private final Node parent;
+	private Node parent;
+	
+	private Matrix4f transformation;
+	
+	private boolean animNode = false;
 	
 	public Node(String name, Node parent)
 	{
 		this.name = name;
 		this.parent = parent;
-		this.transformations = new ArrayList<>();
 		this.children = new ArrayList<>();
+		this.positions = new ArrayList<>();
+		this.rotations = new ArrayList<>();
+		this.scalings = new ArrayList<>();
 	}
 	
-	public static Matrix4f getParentTransforms(Node node, int framePos)
-	{
-		if(node == null)
-		{
-			return new Matrix4f();
-		} 
-		else
-		{
-			Matrix4f parentTransform = new Matrix4f(getParentTransforms(node.getParent(), framePos));
-			List<Matrix4f> transformations = node.getTransformations();
-			Matrix4f nodeTransform;
-			int transFSize = transformations.size();
-			if(framePos < transFSize)
-			{
-				nodeTransform = transformations.get(framePos);
-			}
-			else if(transFSize > 0)
-			{
-				nodeTransform = transformations.get(transFSize - 1);
-			}
-			else
-			{
-				nodeTransform = new Matrix4f();
-			}
-			return Matrix4f.mul(parentTransform, nodeTransform, parentTransform);
-		}
-	}
-	
-	public void addChild(Node node)
-	{
-		this.children.add(node);
-	}
-	
-	public void addTransformation(Matrix4f transformation)
-	{
-		this.transformations.add(transformation);
-	}
-	
-	public Node findByName(String targetName)
+	public Node findByName(String name)
 	{
 		Node result = null;
-		if(this.name.equals(targetName))
+		if(this.name.equals(name))
 		{
 			result = this;
 		}
@@ -72,7 +46,7 @@ public class Node {
 		{
 			for(Node child: children)
 			{
-				result = child.findByName(targetName);
+				result = child.findByName(name);
 				if(result != null)
 				{
 					break;
@@ -83,36 +57,70 @@ public class Node {
 		return result;
 	}
 	
-	public int getAnimationFrames()
+	public void addChild(Node node)
 	{
-		int numFrames = this.transformations.size();
-		for(Node child: children)
-		{
-			int childFrame = child.getAnimationFrames();
-			numFrames = Math.max(numFrames, childFrame);
-		}
-		
-		return numFrames;
+		this.children.add(node);
 	}
-	
-	public List<Node> getChildren()
-	{
+
+	public List<Node> getChildren() {
 		return children;
 	}
-	
-	public List<Matrix4f> getTransformations()
-	{
-		return transformations;
-	}
-	
-	public String getName()
-	{
+
+	public String getName() {
 		return name;
 	}
-	
-	public Node getParent()
-	{
+
+	public Node getParent() {
 		return parent;
 	}
+
+	public List<PositionTransform> getPositions() {
+		return positions;
+	}
+
+	public List<RotationTransform> getRotations() {
+		return rotations;
+	}
+
+	public List<ScaleTransform> getScalings() {
+		return scalings;
+	}
+	
+	public Matrix4f getTransformation() {
+		return transformation;
+	}
+
+	public void setTransformation(Matrix4f transformation) {
+		this.transformation = transformation;
+	}
+
+	public void addPosition(PositionTransform position)
+	{
+		positions.add(position);
+	}
+	
+	public void addScale(ScaleTransform scale)
+	{
+		scalings.add(scale);
+	}
+	
+	public void addRotation(RotationTransform rotation)
+	{
+		rotations.add(rotation);
+	}
+	
+	public void setAnimatedNode(boolean isAnimNode)
+	{
+		this.animNode = isAnimNode;
+	}
+	
+	public boolean isAnimationNode()
+	{
+		return animNode;
+	}
+	
+	
+	
+	
 
 }

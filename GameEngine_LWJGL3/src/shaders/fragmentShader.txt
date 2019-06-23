@@ -1,11 +1,11 @@
-#version 400 core
+#version 330
 
 in vec2 pass_texCoords;
 in vec3 surfaceNormal;
 in vec3 toLightVector[4];
 in vec3 toCameraVec;
 
-out vec4 out_colour;
+layout (location = 0) out vec4 out_colour;
 
 uniform sampler2D textureSampler;
 uniform vec3 lightColour[4];

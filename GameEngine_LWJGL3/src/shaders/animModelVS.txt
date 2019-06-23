@@ -25,20 +25,18 @@ void main(void)
 	vec4 normalPos = vec4(0.0);
 	
 	int count = 0;
-	for(int i=0; i<MAX_WEIGHTS;i++)
+	for(int i = 0; i < MAX_WEIGHTS; i++)
 	{
 		float weight = weights[i];
 		if(weight > 0)
 		{
-			count++;
-			mat4 jointTransform = jointTransforms[jointIndices[i]];
-			vec4 posePosition = jointTransform * vec4(position,1.0);
-			totalPos += posePosition * weights[i];
 			
-			vec4 worldNormal = jointTransform * vec4(normal, 0.0);
-			normalPos += worldNormal * weights[i];
+			vec4 tempPos = jointTransforms[jointIndices[i]] * vec4(position,1.0);
+			vec4 tempNormal = jointTransforms[jointIndices[i]] * vec4(normal,0.0);
+			totalPos += tempPos * weight;
+			normalPos += tempNormal * weight;
+			count++;
 		}
-
 	}
 	
 	if(count == 0)
@@ -46,9 +44,11 @@ void main(void)
 		totalPos = vec4(position,1.0);
 		normalPos = vec4(normal,0.0);
 	}
+	
 
 	mat4 mvMatrix = viewMatrix * transformationMatrix;
 	vec4 mvVertexPos = mvMatrix * totalPos;
 	gl_Position =  projectionMatrix * mvVertexPos;
 	pass_texCoords = texCoords;
+	pass_normal = normalPos.xyz;
 }

@@ -7,15 +7,15 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
-
-import animation.AnimMeshLoader;
-import animation.AnimatedCharacter;
-import animation.Animation;
 import entities.Entity;
+import inputs.Input;
+import inputs.KeyInput;
 import inputs.KeyboardHandler;
 import models.BaseModel;
 import models.TexturedModel;
@@ -25,6 +25,11 @@ import runtime.Main;
 import texturing.ModelTexture;
 
 public class Client {
+	
+	// Global input tracking
+	public static Map<Integer,Input> inputs = new HashMap<>(); // Map to store inputs with reference to order/index
+	private static final double SEND_INPUT_INTERVAL = 0.03; // Fixed interval for sending input data
+	private static float inputTime = 0;
 	
 	// Hold a reference ID for this client
 	private static int ID;
@@ -66,7 +71,7 @@ public class Client {
 			e.printStackTrace();
 		}
 		
-		// Do not listen of UDP socket has not been initialised
+		// Do not listen if UDP socket has not been initialised
 		if(udpSocket == null)
 		{
 			return;
@@ -101,6 +106,11 @@ public class Client {
 								createEntity(values);
 							}
 							
+							Vector3f position = new Vector3f(Float.parseFloat(values.split(",")[0]),
+									Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
+							float rx = Float.parseFloat(values.split(",")[3]);
+							float ry = Float.parseFloat(values.split(",")[4]);
+							float rz = Float.parseFloat(values.split(",")[5]);
 							if(otherEntities.containsKey(receivedID))
 							{
 								PlayerData current = otherEntities.get(receivedID);
@@ -108,13 +118,10 @@ public class Client {
 								{
 									current.setPreviousPosition(current.getNextPosition());
 								}
-								Vector3f position = new Vector3f(Float.parseFloat(values.split(",")[0]),
-										Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
-								float rx = Float.parseFloat(values.split(",")[3]);
-								float ry = Float.parseFloat(values.split(",")[4]);
-								float rz = Float.parseFloat(values.split(",")[5]);
 								current.setNextPosition(position);
 							}
+							
+							currentPlayerPosition = position;
 						}
 						
 
@@ -131,6 +138,72 @@ public class Client {
 		
 		// Start client thread
 		clientThread.start();
+	}
+	
+	/*
+	 * Handle sending of client's input
+	 * Reduce network traffic by sending over strict interval
+	 * This will reduce the number of packets sent over the network
+	 * Thus reducing latency
+	 */
+	public static void sendInputs()
+	{
+		inputTime += Window.getFrameTime();
+		if(inputTime > SEND_INPUT_INTERVAL)
+		{
+			inputTime %= SEND_INPUT_INTERVAL; // Reset input timer
+			
+			// Scan inputs using iterator to remove inputs once processed
+			Iterator<Entry<Integer,Input>> it = inputs.entrySet().iterator();
+			// Count total time of key presses
+			float wKeyTime = 0;
+			float sKeyTime = 0;
+			float aKeyTime = 0;
+			float dKeyTime = 0;
+			while(it.hasNext())
+			{
+				Input current = it.next().getValue();
+				if(current instanceof KeyInput)
+				{
+					KeyInput input = (KeyInput) current;
+					switch(input.getKey())
+					{
+					case 'w': wKeyTime += input.getTimeStamp(); break;
+					case 's': sKeyTime += input.getTimeStamp(); break;
+					case 'a': aKeyTime += input.getTimeStamp(); break;
+					case 'd': dKeyTime += input.getTimeStamp(); break;
+					case ' ': String message = " key pressed " + input.getTimeStamp(); send(message.getBytes()); break;
+					}
+				}
+				
+				it.remove();
+			}
+			
+			if(wKeyTime > 0)
+			{
+				String message = "w key pressed " + wKeyTime;
+				send(message.getBytes());
+			}
+			
+			if(sKeyTime > 0)
+			{
+				String message = "s key pressed " + sKeyTime;
+				send(message.getBytes());
+			}
+			
+			if(aKeyTime > 0)
+			{
+				String message = "a key pressed " + aKeyTime;
+				send(message.getBytes());
+			}
+			
+			if(dKeyTime > 0)
+			{
+				String message = "d key pressed " + dKeyTime;
+				send(message.getBytes());
+			}
+		}
+
 	}
 	
 	// Send data to the server

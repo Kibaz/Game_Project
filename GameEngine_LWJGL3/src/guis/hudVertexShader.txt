@@ -1,0 +1,25 @@
+#version 140
+
+in vec2 position;
+
+out vec2 textureCoords;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+uniform float isHealthPool;
+
+uniform float maxScaleX;
+uniform float currentScaleX;
+
+void main(void)
+{
+	vec4 finalPos = projectionMatrix * modelViewMatrix * vec4(position,0.0,1.0);
+	if(isHealthPool == 1.0)
+	{
+		// Calculate health pool position
+		finalPos.x -= (maxScaleX - currentScaleX) * 0.875;
+	}
+	gl_Position = finalPos;
+	textureCoords = position * 0.5 + 0.5;
+}

@@ -1,14 +1,19 @@
 package inputs;
 
+import java.util.List;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 
+import combat.Ability;
 import entities.Camera;
 import entities.Entity;
 import entities.Player;
+import guis.GUI;
+import guis.GUITexture;
 import physics.AABB;
 import rendering.Window;
 import terrains.Terrain;
@@ -31,6 +36,7 @@ public class MousePicker {
 	private Vector3f currentTerrainPoint;
 	
 	private Entity currentHoveredEntity;
+	private Entity previousHoveredEntity;
 
 	private int prevLeftMouseState = GLFW.GLFW_RELEASE;
 	private int prevRightMouseState = GLFW.GLFW_RELEASE;
@@ -52,13 +58,18 @@ public class MousePicker {
 	{
 		return currentHoveredEntity;
 	}
+	
+	public Entity getPreviousHoveredEntity()
+	{
+		return previousHoveredEntity;
+	}
 
 	public Vector3f getRay()
 	{
 		return ray;
 	}
 	
-	public void update(Player player)
+	public void update(Player player, List<Entity> entities, List<GUI> guis, List<Ability> abilities)
 	{
 		viewMatrix = Maths.createViewMatrix(camera);
 		ray = calculateMouseRay(); // Also equal to the "Direction" vector
@@ -78,33 +89,34 @@ public class MousePicker {
 		for(Entity entity: World.worldObjects)
 		{
 			// If the entity is clickable
+			
 			if(entity.isClickable())
 			{
 				if(rayIntersectsEntity(entity,ray,start)) {
+					// Set entity as hovered
+					entity.setHovered(true);
 					if(entity.isPlayerInClickRange(player))
 					{
-						// Get state of left-mouse button
-						int newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_LEFT);
-						// Check if a single click has been invoked
-						if(newState == GLFW.GLFW_RELEASE && prevLeftMouseState == GLFW.GLFW_PRESS)
+						if(leftMouseClicked())
 						{
+							previousHoveredEntity = null;
 							currentHoveredEntity = entity;
 						}
 						
-						prevLeftMouseState = newState;
-						// Get state of right-mouse button
-						newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_RIGHT);
-						// Check if a single click has been invoked
-						if(newState == GLFW.GLFW_RELEASE && prevRightMouseState == GLFW.GLFW_PRESS)
+						if(rightMouseClicked())
 						{
 							// Trigger event on clicked entity
-							System.out.println("right click");
 						}
 						
-						// keep track of last mouse state
-						prevRightMouseState = newState;
-						
 					}
+				}
+				else
+				{
+					if(entity.isHovered())
+					{
+						entity.setHovered(false);
+					}
+					
 				}
 				
 				
@@ -112,19 +124,68 @@ public class MousePicker {
 			
 		}
 		
-		// Get state of left-mouse button
-		int newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_LEFT);
-		// Check if a single click has been invoked
-		if(newState == GLFW.GLFW_RELEASE && prevLeftMouseState == GLFW.GLFW_PRESS)
+		if(leftMouseClicked())
 		{
-			if(currentHoveredEntity != null)
+			boolean clickedWhiteSpace = true;
+			for(Ability ability: abilities)
 			{
+				if(intersectsGUI(ability.getGui()))
+				{
+					ability.doEffect(entities);
+					clickedWhiteSpace = false;
+				}
+			}
+			
+			if(currentHoveredEntity != null && clickedWhiteSpace)
+			{
+				previousHoveredEntity = currentHoveredEntity;
 				currentHoveredEntity = null;
+			}
+			
+		}
+		
+		for(GUI gui: guis)
+		{
+			if(gui.isClickable())
+			{
+				if(intersectsGUI(gui))
+				{
+					gui.setHovered(true);
+				}
+				else
+				{
+					gui.setHovered(false);
+				}
 			}
 		}
 		
-		prevLeftMouseState = newState;
+	}
+	
+	private boolean leftMouseClicked()
+	{
+		boolean clicked = false;
+		int newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_LEFT);
+		if(newState == GLFW.GLFW_RELEASE && prevLeftMouseState == GLFW.GLFW_PRESS)
+		{
+			clicked = true;
+		}
 		
+		prevLeftMouseState = newState;
+		return clicked;
+	}
+	
+	private boolean rightMouseClicked()
+	{
+		boolean clicked = false;
+		int newState = GLFW.glfwGetMouseButton(Window.getWindowID(), GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+		
+		if(newState == GLFW.GLFW_RELEASE && prevRightMouseState == GLFW.GLFW_PRESS)
+		{
+			clicked = true;
+		}
+		
+		prevRightMouseState = newState;
+		return clicked;
 	}
 	
 	private Vector3f calculateMouseRay()
@@ -159,6 +220,26 @@ public class MousePicker {
 		float x = (2f*mouseX) / Window.getWidth() - 1f;
 		float y = (2f*mouseY) / Window.getHeight() - 1f;
 		return new Vector2f(x,-y);
+	}
+	
+	private boolean intersectsGUI(GUI gui)
+	{
+		float minX = gui.getGUITexture().getPosition().x - (gui.getGUITexture().getScale().x);
+		float minY = gui.getGUITexture().getPosition().y - (gui.getGUITexture().getScale().y);
+		float maxX = gui.getGUITexture().getPosition().x + (gui.getGUITexture().getScale().x);
+		float maxY = gui.getGUITexture().getPosition().y + (gui.getGUITexture().getScale().y);
+		
+		Vector2f normalisedCoords = getNormalizedDeviceCoords(MouseCursor.getXPos(),MouseCursor.getYPos());
+		
+		if(normalisedCoords.x > minX &&
+			normalisedCoords.y > minY &&
+			normalisedCoords.x < maxX &&
+			normalisedCoords.y < maxY)
+		{
+			return true;
+		}
+		
+		return false;
 	}
 	
 	// Calculate the current point on the ray being analysed

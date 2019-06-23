@@ -82,7 +82,7 @@ public class Loader {
 		return tID;
 	}
 	
-	public int loadFontTexture(String file, float blend)
+	public int loadFontTexture(String file)
 	{	
 		ByteBuffer image;
 		int width, height;
@@ -91,7 +91,7 @@ public class Loader {
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, tID);
 		
 		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
-		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, blend);
+		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0);
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -286,7 +286,7 @@ public class Loader {
 		}
 	}
 	
-	private int createVAO()
+	public int createVAO()
 	{
 		int vaoID = GL30.glGenVertexArrays();
 		vaos.add(vaoID);

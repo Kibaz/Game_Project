@@ -6,5 +6,9 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LWJGL3"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/JOML"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/PNGDecoder"/>
+	<classpathentry kind="lib" path="F:/Eclipse Projects/LWJGL 3.2.2/lwjgl-stb/lwjgl-stb.jar"/>
+	<classpathentry kind="lib" path="F:/Eclipse Projects/LWJGL 3.2.2/lwjgl-stb/lwjgl-stb-natives-linux.jar"/>
+	<classpathentry kind="lib" path="F:/Eclipse Projects/LWJGL 3.2.2/lwjgl-stb/lwjgl-stb-natives-macos.jar"/>
+	<classpathentry kind="lib" path="F:/Eclipse Projects/LWJGL 3.2.2/lwjgl-stb/lwjgl-stb-natives-windows.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

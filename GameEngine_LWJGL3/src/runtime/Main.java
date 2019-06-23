@@ -1,6 +1,5 @@
 package runtime;
 
-import java.io.File;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -11,33 +10,40 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
-
-import animation.AnimMeshLoader;
-import animation.AnimatedCharacter;
-import animation.Animation;
+import animation.AnimatedEntity;
+import animation.AnimationLoader;
+import buffers.FBO;
+import combat.Ability;
+import combat.AbilityRenderer;
+import combat.ArcIndicator;
+import combat.DOT;
+import components.AI;
+import components.Collider;
+import components.CombatManager;
+import components.Controller;
+import components.FloatingHealthBar;
+import components.HealthBarFrame;
+import components.Motion;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
 import entities.Player;
-import entities.TestMob;
 import fontRendering.TextController;
-import fontUtils.FontStyle;
 import fontUtils.GUIText;
+import guis.GUI;
 import guis.GUIRenderer;
 import guis.GUITexture;
-import models.BaseModel;
-import models.TexturedModel;
+import guis.HUD;
+import guis.HUDRenderer;
+import inputs.MousePicker;
 import networking.Client;
-import networking.PlayerData;
 import particles.ParticleManager;
-import pathfinding.Graph;
-import pathfinding.GridSquare;
 import physics.SAP;
+import postProcessing.PostProcessor;
 import rendering.AdvancedRenderer;
 import rendering.Loader;
 import rendering.Window;
 import terrains.Terrain;
-import texturing.ModelTexture;
 import water.WaterFBO;
 import water.WaterPlane;
 import water.WaterRenderer;
@@ -52,10 +58,12 @@ public class Main {
 		// Initialise lists of terrains, entities, animated characters, lights etc...
 		List<Terrain> terrains = new ArrayList<>(); // Terrains
 		List<Light> lights = new ArrayList<>(); // Lights
-		List<AnimatedCharacter> animatedChars = new ArrayList<>(); // Animated characters
+		List<AnimatedEntity> animatedEntities = new ArrayList<>();
 		List<Entity> entities = new ArrayList<>(); // Entities
 		List<WaterPlane> water = new ArrayList<>(); // Any water?
-		List<GUITexture> guis = new ArrayList<>(); // Store GUIs
+		List<GUI> guis = new ArrayList<>(); // Store GUIs
+		List<HUD> huds = new ArrayList<>();
+		List<Ability> abilities = new ArrayList<>();
 		
 		// Initialise loader for the game
 		/*
@@ -85,32 +93,81 @@ public class Main {
 		water.addAll(tigranStartZone.getWater());
 		World.addZone(tigranStartZone.getName(), tigranStartZone);
 		
-		/* Test loading an animated character */
-		BaseModel[] testModels = null;
+		GUITexture testButtonTexture = new GUITexture(loader.loadTexture("res/test_button.png"),new Vector2f(0,-0.9f),new Vector2f(0.05f,0.05f));
+		GUI testButton = new GUI(testButtonTexture);
+		testButton.setClickable(true);
+		guis.add(testButton);
 		
-		Animation animation = null;
-		try {
-			animation = AnimMeshLoader.loadAnimation("res/model.dae", loader);
-		} catch (Exception e) {
-			e.printStackTrace();
+		AnimatedEntity testAnimEnt = AnimationLoader.loadAnimatedFile("res/model.dae","res/Character Texture.png",new Vector3f(100,
+				tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),90,0,0,1,loader);
+		
+		Player player = new Player(loader,testAnimEnt.getModel(), new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
+		player.setBones(testAnimEnt.getBones());
+		player.getAABB().setRotation(-90, 0, 0);
+		player.getEllipsoid().setRotation(-90, 0, 0);
+		player.setJointTransforms(testAnimEnt.getJointTransforms());
+		player.setGlobalTransformationMatrix(testAnimEnt.getGlobalTransformationMatrix());
+		player.setAnimations(testAnimEnt.getAnimations());
+		player.setCurrentAnimation("");
+		player.setClickable(true);
+		animatedEntities.add(player);
+		guis.addAll(player.getUIFrame().getGuis());
+		for(GUIText text: player.getUIFrame().getTextGuis())
+		{
+			TextController.loadText(text);
 		}
 		
-		testModels = animation.getModels();
+		Entity test = new Entity(testAnimEnt.getModel(), new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
+		test.setStaticModel(false);
+		Motion motion = new Motion();
+		motion.setRunSpeed(20);
+		motion.setSwimSpeed(10);
+		motion.setWalkSpeed(10);
+		Controller controller = new Controller("player_controller");
+		test.addComponent(motion);
+		test.addComponent(controller);
+		test.addComponent(new Collider("collider",terrains));
+		test.getComponentByType(Collider.class).start();
 		
-		ModelTexture playerTex = new ModelTexture(loader.loadTexture("res/Character Texture.png"));
-		TexturedModel playerTexMod = new TexturedModel(testModels[0], playerTex);
+		entities.add(test);
+		World.addEntity(test);
 		
-		Player player = new Player(loader,playerTexMod, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
-		guis.add(player.getHealthBar());
+		Entity cubeMob = new Entity(testAnimEnt.getModel(),new Vector3f(50,
+				tigranStartZone.getTerrains().get(0).getTerrainHeight(50, 50),50),-90,0,0,1);
+		cubeMob.getAABB().setRotation(-90, 0, 0);
+		cubeMob.setClickable(true);
+		HealthBarFrame mobHealthFrame = new HealthBarFrame("npc_health_frame",new Vector2f(-0.3f,0.9f),new Vector2f(0.22f,0.035f), new Vector2f(-0.1475f,0.035f));
+		FloatingHealthBar floatingHealthBar = new FloatingHealthBar("npc_floating_health");
+		List<Entity> mobEnemies = new ArrayList<>();
+		mobEnemies.add(player);
+		AI mobAI = new AI("mob_ai",entities,terrains,mobEnemies);
+		mobAI.setAggroRange(50);
+		mobAI.setAvoidanceForce(0.3f);
+		mobAI.setWanderRadius(50);
+		mobAI.setSlowingRadius(7);
+		mobAI.setSteerForce(0.1f);
+		cubeMob.addComponent(mobHealthFrame);
+		cubeMob.addComponent(floatingHealthBar);
+		cubeMob.addComponent(mobAI);
+		cubeMob.addComponent(new CombatManager("mob_combat_manager"));
+		huds.add(floatingHealthBar.getHealthFrame());
+		huds.add(floatingHealthBar.getHealthPool());
+		guis.add(mobHealthFrame.getHealthFrame());
+		guis.add(mobHealthFrame.getHealthPool());
+		entities.add(cubeMob);
+		World.addEntity(cubeMob);
+		
+		cubeMob.getComponentByType(HealthBarFrame.class).setMaxHealth(100);
+		cubeMob.getComponentByType(HealthBarFrame.class).setHealth(100);
+		cubeMob.getComponentByType(HealthBarFrame.class).setLevel(1);
+		cubeMob.getComponentByType(HealthBarFrame.class).setVisible(false);
+		cubeMob.getComponentByType(AI.class).start();
+		TextController.loadText(cubeMob.getComponentByType(HealthBarFrame.class).getHealthInfo());
+		TextController.loadText(cubeMob.getComponentByType(HealthBarFrame.class).getLevelInfo());
+		
+		//guis.add(player.getHealthBar());
 		Client.setPreviousPlayerPosition(player.getPosition());
 		World.addEntity(player);
-		
-		/* New code for setting up a single animated character */
-		AnimatedCharacter animChar = new AnimatedCharacter(player);
-		animChar.submitAnimation(AnimatedCharacter.RUN, animation);
-		animChar.setCurrentAnimation(AnimatedCharacter.RUN);
-		animChar.playCurrentAnimation();
-		animatedChars.add(animChar);
 		
 		Client.listen();
 		Client.send("Requesting connection".getBytes());
@@ -120,6 +177,8 @@ public class Main {
 		
 		AdvancedRenderer renderer = new AdvancedRenderer(loader, camera);
 		
+		HUDRenderer hudRenderer = new HUDRenderer(loader,renderer.getProjectionMatrix());
+		
 		ParticleManager.init(loader, renderer.getProjectionMatrix());
 		
 		GUIRenderer guiRenderer = new GUIRenderer(loader);
@@ -128,40 +187,74 @@ public class Main {
 		
 		WaterShader waterShader = new WaterShader();
 		WaterRenderer waterRenderer = new WaterRenderer(loader, waterShader, renderer.getProjectionMatrix(), waterFBOS);
+		Entity testEnt = new Entity(testAnimEnt.getModel(), new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),-90,0,0,1);
+		entities.add(testEnt);
+		
+		animatedEntities.add(testAnimEnt);
 		
 		// Initialising physics
 		SAP sap = new SAP();
 		
+		MousePicker picker = new MousePicker(camera,renderer.getProjectionMatrix(),tigranStartZone.getTerrains().get(0));
+		
+		
+		FBO multiSampleFbo = new FBO(Window.getWidth(),Window.getHeight());
+		FBO outFbo = new FBO(Window.getWidth(),Window.getHeight(),FBO.DEPTH_TEXTURE);
+		
+		PostProcessor.init(loader);
+		
+		AbilityRenderer abilityRenderer = new AbilityRenderer(loader,renderer.getProjectionMatrix());
+		DOT testPoision = new DOT(5,1,3,5);
+		ArcIndicator arcIndicator = new ArcIndicator(player.getPosition(),0,15,20,15,120);
+		arcIndicator.buildIndicator(loader);
+		Ability testAbility = new Ability(testButton,"Slash","test",arcIndicator,testPoision,3,Ability.Type.INSTANT);
+		
+		abilities.add(testAbility);
+		
 		while(!Window.closed())
 		{
 			/*window.clear();*/
-			
+			Client.sendInputs();
 			// Testing client side prediction
 			player.movePlayer(terrains, water, entities);
-			//waterPlane.update(player);
-			for(Entity entity: entities)
+			arcIndicator.setPosition(player.getPosition());
+			arcIndicator.setRotY(player.getRotY());
+			cubeMob.update();
+			test.update();
+			
+			for(Ability ability: abilities)
 			{
-				if(entity.isClicked())
+				ability.update();
+			}
+			
+			//waterPlane.update(player);
+			if(Client.getCurrentPlayerPosition() != null)
+			{
+				testEnt.setPosition(Client.getCurrentPlayerPosition());
+			}
+			
+			player.update();
+			
+			picker.update(player,entities,guis,abilities);
+			
+			if(picker.getCurrentHoveredEntity() != null)
+			{
+				HealthBarFrame healthFrame = picker.getCurrentHoveredEntity().getComponentByType(HealthBarFrame.class);
+				if(healthFrame != null)
 				{
-					if(entity instanceof TestMob)
-					{
-						TestMob curr = (TestMob) entity;
-						if(!guis.contains(curr.getHealthBar()))
-						{
-							guis.add(curr.getHealthBar());
-						}
-						
-					}
-				}
-				
-				if(entity instanceof TestMob)
-				{
-					((TestMob) entity).update(player,terrains);
+					healthFrame.setVisible(true);
 				}
 			}
 			
-			// Carry out animations
-			animChar.getAnimator().update();
+			if(picker.getPreviousHoveredEntity() != null)
+			{
+				HealthBarFrame healthFrame = picker.getPreviousHoveredEntity().getComponentByType(HealthBarFrame.class);
+				if(healthFrame != null)
+				{
+					healthFrame.setVisible(false);
+				}
+			}
+			
 			
 			// Carry out physics engine
 			sap.update();
@@ -180,14 +273,14 @@ public class Main {
 				float distance = 2 * (camera.getPosition().y - water.get(0).getHeight());
 				camera.getPosition().y -= distance;
 				camera.invertPitch();
-				renderer.renderScene(entities, terrains, animatedChars, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight()+0.3f));
+				renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight()+0.3f));
 				camera.getPosition().y += distance;
 				camera.invertPitch();
 				waterFBOS.unbindFrameBuffer();
 				
 				// render refraction texture
 				waterFBOS.bindRefractionBuffer();
-				renderer.renderScene(entities, terrains,  animatedChars, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight() + 1f));
+				renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight() + 1f));
 				waterFBOS.unbindFrameBuffer();
 			}
 			else
@@ -198,34 +291,45 @@ public class Main {
 				float distance = 2 * (camera.getPosition().y - water.get(0).getHeight());
 				camera.getPosition().y -= distance;
 				camera.invertPitch();
-				renderer.renderScene(entities, terrains,  animatedChars, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight()+0.3f));
+				renderer.renderScene(entities, terrains,  animatedEntities, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight()+0.3f));
 				camera.getPosition().y += distance;
 				camera.invertPitch();
 				waterFBOS.unbindFrameBuffer();
 				
 				// render refraction texture
 				waterFBOS.bindRefractionBuffer();
-				renderer.renderScene(entities, terrains,  animatedChars, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight() + 1f));
+				renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight() + 1f));
 				waterFBOS.unbindFrameBuffer();
 			}
 			
 			// render to the display, i.e default frame buffer
 			GL11.glDisable(GL30.GL_CLIP_DISTANCE0);
-			renderer.renderScene(entities, terrains, animatedChars, lights, camera, new Vector4f(0,-1,0,0));
-			waterRenderer.render(water, camera, tigranStartZone.getSun(), renderer.getNearPlane(), renderer.getFarPlane());
 			
+			multiSampleFbo.bindFrameBuffer();
+			renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,-1,0,0));
+			waterRenderer.render(water, camera, tigranStartZone.getSun(), renderer.getNearPlane(), renderer.getFarPlane());
+			multiSampleFbo.unbindFrameBuffer();
+			multiSampleFbo.resolveToFBO(GL30.GL_COLOR_ATTACHMENT0,outFbo);
+			PostProcessor.handlePostProcessing(outFbo.getColourTexture());
 			ParticleManager.render(camera);
 			
+			
+			abilityRenderer.render(abilities, camera);
 			guiRenderer.render(guis);
+			hudRenderer.render(huds, camera);
+			
 			TextController.render();
 			Window.update();;
 		}
 		
 		// Clean up all rendering, processing etc...
+		multiSampleFbo.cleanUp();
+		outFbo.cleanUp();
 		waterFBOS.cleanUp();
 		waterShader.cleanUp();
 		renderer.cleanUp();
 		loader.cleanUp();
+		PostProcessor.cleanUp();
 		Window.destroy();
 		Client.disconnect();
 	}

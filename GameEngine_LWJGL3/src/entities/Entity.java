@@ -1,10 +1,14 @@
 package entities;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.lwjgl.util.vector.Vector3f;
 
+import components.Component;
 import models.TexturedModel;
 import networking.Client;
-import pathfinding.GridSquare;
 import physics.AABB;
 import physics.Triangle;
 import rendering.Window;
@@ -17,13 +21,19 @@ public class Entity {
 	private float rotX, rotY, rotZ, scale;
 	private Triangle[] triangles;
 	
+	private UUID id;
+	
 	private boolean staticModel = false;
 	private boolean clickable = false;
 	private boolean clicked = false;
+	private boolean hovered = false;
 	
-	private float clickRange = 7.5f;
+	private float clickRange = 100f;
 	
 	private int textureIndex = 0;
+	
+	// Component list to retain a component based architecture
+	private Map<String,Component> components;
 	
 	public Entity(TexturedModel model, Vector3f position, 
 			float rotX, float rotY, float rotZ, float scale)
@@ -36,6 +46,8 @@ public class Entity {
 		this.scale = scale;
 		this.aabb = new AABB(this, this.position);
 		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
+		this.components = new HashMap<>();
+		this.id = UUID.randomUUID();
 		setTriangles();
 	}
 	
@@ -51,7 +63,17 @@ public class Entity {
 		this.scale = scale;
 		this.aabb = new AABB(this, this.position);
 		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
+		this.id = UUID.randomUUID();
 		setTriangles();
+	}
+	
+	public void update()
+	{
+		// Update all components
+		for(String componentName: components.keySet())
+		{
+			components.get(componentName).update();
+		}
 	}
 	
 	public float getTextureXOffset()
@@ -79,6 +101,30 @@ public class Entity {
 		this.rotX+=dx;
 		this.rotY+=dy;
 		this.rotZ+=dz;
+	}
+	
+	public void addComponent(Component component)
+	{
+		component.setEntity(this);
+		this.components.put(component.getName(), component);
+	}
+	
+	public Component getComponentByName(String name)
+	{
+		return components.get(name);
+	}
+	
+	public <T extends Component> T getComponentByType(Class<T> type)
+	{
+		for(String componentName: components.keySet())
+		{
+			if(components.get(componentName).getClass() == type)
+			{
+				return type.cast(components.get(componentName));
+			}
+		}
+		
+		return null;
 	}
 	
 	public TexturedModel getModel() {
@@ -269,6 +315,28 @@ public class Entity {
 	{
 		return staticModel;
 	}
+	
+	public boolean isHovered()
+	{
+		return hovered;
+	}
+	
+	public void setHovered(boolean hovered)
+	{
+		this.hovered = hovered;
+	}
+	
+	public UUID getID()
+	{
+		return id;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return this.id == ((Entity)(obj)).id;
+	}
+	
+	
 	
 	
 	
