@@ -18,6 +18,7 @@ public class InstantDamage extends Effect {
 		super("Instant");
 		this.maxDamage = maxDamage;
 		this.minDamage = minDamage;
+		this.damageCalculator = new Random();
 	}
 	
 	public InstantDamage(InstantDamage other) {
@@ -47,6 +48,11 @@ public class InstantDamage extends Effect {
 		
 		this.ended = true;
 		
+	}
+
+	@Override
+	protected Effect clone() {
+		return new InstantDamage(this);
 	}
 
 }

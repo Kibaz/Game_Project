@@ -26,6 +26,7 @@ public class CombatManager extends Component {
 	@Override
 	public void update() {
 		Iterator<Entry<Ability,Effect>> effectIterator = effectQueue.entrySet().iterator();
+		System.out.println(effectQueue.size());
 		while(effectIterator.hasNext())
 		{
 			Entry<Ability, Effect> current = effectIterator.next();

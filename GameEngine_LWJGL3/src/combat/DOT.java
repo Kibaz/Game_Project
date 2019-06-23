@@ -91,4 +91,9 @@ public class DOT extends Effect{
 		return duration;
 	}
 
+	@Override
+	protected Effect clone() {
+		return new DOT(this);
+	}
+
 }

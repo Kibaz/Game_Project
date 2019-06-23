@@ -69,7 +69,11 @@ public class Ability{
 					}
 				}
 			}
+			
+			onCooldown = true;
 		}
+		
+		
 	}
 	
 	
@@ -79,7 +83,7 @@ public class Ability{
 		{
 			return;
 		}
-		
+		System.out.println("test");
 		cooldownElapse -= Window.getFrameTime();
 		
 		if(cooldownElapse < 0)

@@ -16,7 +16,10 @@ import buffers.FBO;
 import combat.Ability;
 import combat.AbilityRenderer;
 import combat.ArcIndicator;
+import combat.ChainedEffect;
 import combat.DOT;
+import combat.Effect;
+import combat.InstantDamage;
 import components.AI;
 import components.Collider;
 import components.CombatManager;
@@ -204,10 +207,15 @@ public class Main {
 		PostProcessor.init(loader);
 		
 		AbilityRenderer abilityRenderer = new AbilityRenderer(loader,renderer.getProjectionMatrix());
+		List<Effect> chainedEffects = new ArrayList<>();
+		chainedEffects.add(new InstantDamage(13,6));
 		DOT testPoision = new DOT(5,1,3,5);
+		chainedEffects.add(testPoision);
+		ChainedEffect testChainedEffect = new ChainedEffect(chainedEffects);
+		
 		ArcIndicator arcIndicator = new ArcIndicator(player.getPosition(),0,15,20,15,120);
 		arcIndicator.buildIndicator(loader);
-		Ability testAbility = new Ability(testButton,"Slash","test",arcIndicator,testPoision,3,Ability.Type.INSTANT);
+		Ability testAbility = new Ability(testButton,"Slash","test",arcIndicator,testChainedEffect,3,Ability.Type.INSTANT);
 		
 		abilities.add(testAbility);
 		
@@ -219,6 +227,7 @@ public class Main {
 			player.movePlayer(terrains, water, entities);
 			arcIndicator.setPosition(player.getPosition());
 			arcIndicator.setRotY(player.getRotY());
+			testAbility.update();
 			cubeMob.update();
 			test.update();
 			

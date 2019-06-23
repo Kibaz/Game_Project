@@ -25,6 +25,8 @@ public abstract class Effect {
 	
 	public abstract void apply(Entity entity);
 	
+	protected abstract Effect clone();
+	
 	public abstract void execute(Entity entity);
 	
 	public boolean hasEnded()

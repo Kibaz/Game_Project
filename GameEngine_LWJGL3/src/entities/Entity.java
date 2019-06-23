@@ -63,6 +63,7 @@ public class Entity {
 		this.scale = scale;
 		this.aabb = new AABB(this, this.position);
 		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
+		this.components = new HashMap<>();
 		this.id = UUID.randomUUID();
 		setTriangles();
 	}

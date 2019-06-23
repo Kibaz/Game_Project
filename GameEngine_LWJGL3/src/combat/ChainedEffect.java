@@ -20,7 +20,11 @@ public class ChainedEffect extends Effect {
 	public ChainedEffect(ChainedEffect other)
 	{
 		super(other);
-		this.chainedEffects = new ArrayList<>(other.chainedEffects);
+		this.chainedEffects = new ArrayList<>(other.chainedEffects.size());
+		for(Effect effect: other.chainedEffects)
+		{
+			this.chainedEffects.add(effect.clone());
+		}
 	}
 
 	
@@ -37,6 +41,12 @@ public class ChainedEffect extends Effect {
 		
 		if(chainedEffects.size() == 0 && chainedEffects.isEmpty())
 		{
+			return;
+		}
+		
+		if(effectIndex == chainedEffects.size())
+		{
+			this.ended = true;
 			return;
 		}
 		
@@ -63,7 +73,10 @@ public class ChainedEffect extends Effect {
 	public void apply(Entity entity) {
 		this.ended = false;
 		CombatManager combatManager = entity.getComponentByType(CombatManager.class);
-		combatManager.submitEffect(new ChainedEffect(this));
+		if(combatManager != null)
+		{
+			combatManager.submitEffect(new ChainedEffect(this));
+		}
 	}
 
 	public void addEffect(Effect effect)
@@ -78,6 +91,11 @@ public class ChainedEffect extends Effect {
 
 	public List<Effect> getChainedEffects() {
 		return chainedEffects;
+	}
+
+	@Override
+	protected Effect clone() {
+		return new ChainedEffect(this);
 	}
 	
 	
