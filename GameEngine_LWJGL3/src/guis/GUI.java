@@ -1,5 +1,7 @@
 package guis;
 
+import eventListeners.ButtonListener;
+
 public class GUI{
 	
 	private GUITexture texture;
@@ -8,10 +10,13 @@ public class GUI{
 	private boolean hovered;
 	private boolean visible;
 	
+	private boolean clicked;
+	
 	public GUI(GUITexture texture)
 	{
 		this.texture = texture;
 		this.visible = true;
+		this.clicked = false;
 	}
 
 	public GUITexture getGUITexture() {
@@ -44,6 +49,16 @@ public class GUI{
 	public void setVisible(boolean visible) {
 		this.visible = visible;
 	}
+
+	public boolean isClicked() {
+		return clicked;
+	}
+
+	public void setClicked(boolean clicked) {
+		this.clicked = clicked;
+	}
+	
+	
 	
 	
 	

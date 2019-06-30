@@ -29,6 +29,8 @@ import org.lwjgl.util.vector.Quaternion;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 
+import components.AnimationComponent;
+import entities.Entity;
 import models.BaseModel;
 import models.Mesh;
 import models.TexturedModel;
@@ -39,7 +41,7 @@ import utils.Utils;
 
 public class AnimationLoader {
 	
-	public static AnimatedEntity loadAnimatedFile(String filePath, String texturePath, Vector3f position, float rotX, float rotY, float rotZ, float scale, Loader loader) throws RuntimeException
+	public static Entity loadAnimatedFile(String filePath, String texturePath, Vector3f position, float rotX, float rotY, float rotZ, float scale, Loader loader) throws RuntimeException
 	{	
 		
 		AIScene scene = Assimp.aiImportFile(filePath, 
@@ -89,22 +91,30 @@ public class AnimationLoader {
 		
 		AIMatrix4x4 inverseRootTransform = aiRootNode.mTransformation();
 		Matrix4f inverseRootTransformation = Utils.convertAssimpToLWJGLMat4(inverseRootTransform);
-		rootNode.setTransformation(inverseRootTransformation);
+		rootNode.setTransformation(inverseRootTransformation); // Required transform for correctly position model
 		ModelTexture texture = new ModelTexture(loader.loadTexture(texturePath));
-		AnimatedEntity animatedEntity = new AnimatedEntity(new TexturedModel(meshes[0],texture),position,rotX,rotY,rotZ,scale);
-		animatedEntity.setBones(bones);
+		/*
+		 * Create a regular entity using mesh data, 
+		 * texture data and specified position,
+		 * rotation and scale data
+		 */
+		Entity entity = new Entity(new TexturedModel(meshes[0],texture),position,rotX,rotY,rotZ,scale);
+		// Create an animated component using the processed animation data
+		AnimationComponent animationComponent = new AnimationComponent("animated_component");
+		animationComponent.setBones(bones);
 		Matrix4f[] jointTransforms = new Matrix4f[bones.length];
 		Arrays.fill(jointTransforms, new Matrix4f());
-		animatedEntity.setJointTransforms(jointTransforms);
-		animatedEntity.setGlobalTransformationMatrix(inverseRootTransformation);
+		animationComponent.setJointTransforms(jointTransforms);
+		animationComponent.setGlobalTransformationMatrix(inverseRootTransformation);
 		
 		// Build animations
-		readAnimations(animatedEntity,scene,rootNode);
-		return animatedEntity;
+		readAnimations(animationComponent,scene,rootNode);
+		entity.addComponent(animationComponent);
+		return entity;
 		
 	}
 	
-	private static void readAnimations(AnimatedEntity animEntity, AIScene scene, Node root)
+	private static void readAnimations(AnimationComponent animationComponent, AIScene scene, Node root)
 	{
 		int numAnims = scene.mNumAnimations();
 		PointerBuffer animations = scene.mAnimations();
@@ -125,8 +135,7 @@ public class AnimationLoader {
 			double duration = aiAnimation.mDuration();
 			double ticksPerSecond = aiAnimation.mTicksPerSecond();
 			Animation animation = new Animation(aiAnimation.mName().dataString(),ticksPerSecond,duration,root);
-			animEntity.submitAnimation(animation.getName(), animation);
-			System.out.println(animation.getName());
+			animationComponent.submitAnimation(animation.getName(), animation);
 		}
 	}
 	

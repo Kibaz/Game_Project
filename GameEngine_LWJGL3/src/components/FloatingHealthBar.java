@@ -33,10 +33,10 @@ public class FloatingHealthBar extends Component {
 			healthFrame.setPosition(new Vector3f(entity.getPosition().x,entity.getPosition().y + 
 					entity.getModel().getBaseModel().getModelZWidth() + 1, entity.getPosition().z));
 			
-			HealthBarFrame healthBar = entity.getComponentByType(HealthBarFrame.class);
-			if(healthBar != null)
+			EntityInformation info = entity.getComponentByType(EntityInformation.class);
+			if(info != null)
 			{
-				float scaleFactor = healthBar.getHealth() / healthBar.getMaxHealth();
+				float scaleFactor = info.getHealth() / (float) info.getMaxHealth();
 				healthPool.getScale().x = scaleFactor * healthPool.getMaxScaleX();
 			}
 		}
@@ -50,7 +50,7 @@ public class FloatingHealthBar extends Component {
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		loader.cleanUp();
 		
 	}

@@ -12,6 +12,8 @@ public class CombatManager extends Component {
 	
 	private Map<Ability,Effect> effectQueue;
 	
+	private boolean inCombat;
+	
 	public CombatManager(String name)
 	{
 		super(name);
@@ -21,12 +23,12 @@ public class CombatManager extends Component {
 	@Override
 	protected void init() {
 		effectQueue = new HashMap<>();
+		inCombat = false;
 	}
 
 	@Override
 	public void update() {
 		Iterator<Entry<Ability,Effect>> effectIterator = effectQueue.entrySet().iterator();
-		System.out.println(effectQueue.size());
 		while(effectIterator.hasNext())
 		{
 			Entry<Ability, Effect> current = effectIterator.next();
@@ -48,7 +50,7 @@ public class CombatManager extends Component {
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		loader.cleanUp();	
 	}
 	
@@ -56,5 +58,15 @@ public class CombatManager extends Component {
 	{
 		effectQueue.put(effect.getAbility(), effect);
 	}
+
+	public boolean isInCombat() {
+		return inCombat;
+	}
+
+	public void setInCombat(boolean inCombat) {
+		this.inCombat = inCombat;
+	}
+	
+	
 
 }

@@ -83,7 +83,6 @@ public class Ability{
 		{
 			return;
 		}
-		System.out.println("test");
 		cooldownElapse -= Window.getFrameTime();
 		
 		if(cooldownElapse < 0)
@@ -128,6 +127,10 @@ public class Ability{
 		return cooldown;
 	}
 	
+	public boolean isOnCooldown() {
+		return onCooldown;
+	}
+
 	public DamageIndicator getDamageIndicator()
 	{
 		return damageIndicator;

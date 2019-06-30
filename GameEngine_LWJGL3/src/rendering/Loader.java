@@ -265,7 +265,7 @@ public class Loader {
 		storeDataInAttributeList(3,4,boneIds);
 		storeDataInAttributeList(4,4,weights);
 		unbindVAO();
-		return new BaseModel(vaoID, indices.length, positions, indices);
+		return new BaseModel(vaoID, indices.length, positions, indices,true);
 	}
 	
 	public void cleanUp()

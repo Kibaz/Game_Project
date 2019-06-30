@@ -18,6 +18,7 @@ import entities.Light;
 import models.TexturedModel;
 import shaders.AnimatedModelShader;
 import shaders.BasicShader;
+import shaders.EntityShader;
 import shaders.StencilShader;
 import shaders.TerrainShader;
 import shadowMapping.ShadowRenderer;
@@ -38,7 +39,7 @@ public class AdvancedRenderer {
 	
 	private boolean applyCausticEffect;
 	
-	private BasicShader shader = new BasicShader();
+	private EntityShader entityShader = new EntityShader();
 	private StencilShader stencilShader = new StencilShader();
 	private EntityRenderer renderer;
 	
@@ -61,7 +62,7 @@ public class AdvancedRenderer {
 	{
 		enableCulling();
 		createProjectionMatrix();
-		renderer = new EntityRenderer(shader,stencilShader,projectionMatrix);
+		renderer = new EntityRenderer(entityShader,stencilShader,projectionMatrix);
 		terrainRenderer = new TerrainRenderer(terrainShader, projectionMatrix);
 		animRenderer = new AnimationRenderer(animShader, projectionMatrix);
 		skyboxRenderer = new SkyboxRenderer(loader, projectionMatrix);
@@ -102,11 +103,11 @@ public class AdvancedRenderer {
 	public void render(List<Light> lights, Camera camera, Vector4f clipPlane)
 	{
 		prepare();
-		shader.start();
-		shader.loadClipPlane(clipPlane);
-		shader.loadLights(lights);
-		shader.loadViewMatrix(camera);
-		shader.stop();
+		entityShader.start();
+		entityShader.loadClipPlane(clipPlane);
+		entityShader.loadLights(lights);
+		entityShader.loadViewMatrix(camera);
+		entityShader.stop();
 		stencilShader.start();
 		stencilShader.loadViewMatrix(camera);
 		stencilShader.stop();
@@ -130,7 +131,7 @@ public class AdvancedRenderer {
 		skyboxRenderer.render(camera, RED, GREEN, BLUE);
 		animShader.start();
 		animShader.loadViewMatrix(camera);
-		animRenderer.render(animatedEntities.get(0));
+		//animRenderer.render(animatedEntities.get(0));
 		animShader.stop();
 		terrains.clear();
 		entities.clear();
@@ -189,7 +190,7 @@ public class AdvancedRenderer {
 	
 	public void cleanUp()
 	{
-		shader.cleanUp();
+		entityShader.cleanUp();
 		terrainShader.cleanUp();
 		shadowRenderer.cleanUp();
 	}

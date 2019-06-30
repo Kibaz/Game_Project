@@ -3,7 +3,7 @@ package combat;
 import java.util.Random;
 
 import components.CombatManager;
-import components.HealthBarFrame;
+import components.EntityInformation;
 import entities.Entity;
 import rendering.Window;
 
@@ -65,10 +65,9 @@ public class DOT extends Effect{
 		// Check if the timeElapsed exceeds the tick rate
 		if(timeElapsed > tickRate)
 		{
-			HealthBarFrame healthBar = entity.getComponentByType(HealthBarFrame.class);
+			EntityInformation info = entity.getComponentByType(EntityInformation.class);
 			int damageOnTick = damageCalculator.nextInt((maxDamagePerTick - minDamagePerTick) + 1) + minDamagePerTick;
-			System.out.println(damageOnTick);
-			healthBar.setHealth(healthBar.getHealth() - damageOnTick);
+			info.setHealth(info.getHealth() - damageOnTick);
 			
 			tickCount++; // Increment tick count
 			timeElapsed = 0; // Reset timer

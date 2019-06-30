@@ -10,7 +10,6 @@ import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
 import entities.Entity;
-import entities.Player;
 import models.BaseModel;
 import pathfinding.Graph;
 import pathfinding.GridSquare;

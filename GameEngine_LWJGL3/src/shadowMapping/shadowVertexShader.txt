@@ -1,14 +1,42 @@
 #version 400 core
 
+const int MAX_JOINTS = 150;
+const int MAX_WEIGHTS = 4;
+
 in vec3 position;
 in vec2 texCoords;
+in ivec4 jointIndices;
+in vec4 weights;
 
 out vec2 pass_texCoords;
 
 uniform mat4 mvpMatrix;
+uniform mat4 jointTransforms[MAX_JOINTS];
+uniform float isAnimated;
 
 void main(void)
 {
-	gl_Position = mvpMatrix * vec4(position,1.0);
+
+	vec4 totalPos = vec4(0.0);
+
+	if(isAnimated > 0.5)
+	{
+		for(int i = 0; i < MAX_WEIGHTS; i++)
+		{
+			float weight = weights[i];
+			if(weight > 0)
+			{
+				vec4 tempPos = jointTransforms[jointIndices[i]] * vec4(position,1.0);
+				totalPos += tempPos * weight;
+			}
+		}
+	}
+	else
+	{
+		totalPos = vec4(position,1.0);
+	}
+
+
+	gl_Position = mvpMatrix * totalPos;
 	pass_texCoords = texCoords;
 }

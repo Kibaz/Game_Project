@@ -34,7 +34,7 @@ public class Controller extends Component{
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		
 	}
 	

@@ -1,5 +1,6 @@
 package inputs;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
@@ -9,9 +10,10 @@ import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 
 import combat.Ability;
+import components.EntityProfile;
+import components.HealthBarFrame;
 import entities.Camera;
 import entities.Entity;
-import entities.Player;
 import guis.GUI;
 import guis.GUITexture;
 import physics.AABB;
@@ -41,6 +43,8 @@ public class MousePicker {
 	private int prevLeftMouseState = GLFW.GLFW_RELEASE;
 	private int prevRightMouseState = GLFW.GLFW_RELEASE;
 	
+	private boolean clickedWhiteSpace = true;
+	
 	public MousePicker(Camera camera, Matrix4f projection, Terrain terrain)
 	{
 		this.camera = camera;
@@ -69,8 +73,9 @@ public class MousePicker {
 		return ray;
 	}
 	
-	public void update(Player player, List<Entity> entities, List<GUI> guis, List<Ability> abilities)
+	public void update(Entity player, List<Entity> entities, List<GUI> guis, List<Ability> abilities)
 	{
+		clickedWhiteSpace = true;
 		viewMatrix = Maths.createViewMatrix(camera);
 		ray = calculateMouseRay(); // Also equal to the "Direction" vector
 		if(intersectionInRange(0, RAY_LENGTH, ray))
@@ -85,6 +90,8 @@ public class MousePicker {
 		// Calculate point of origin of the ray
 		Vector3f start = getPointOnRay(ray, 0);
 		
+		List<Entity> hoveredEntities = new ArrayList<>();
+		
 		// For each existing entity
 		for(Entity entity: World.worldObjects)
 		{
@@ -93,56 +100,42 @@ public class MousePicker {
 			if(entity.isClickable())
 			{
 				if(rayIntersectsEntity(entity,ray,start)) {
-					// Set entity as hovered
-					entity.setHovered(true);
-					if(entity.isPlayerInClickRange(player))
-					{
-						if(leftMouseClicked())
-						{
-							previousHoveredEntity = null;
-							currentHoveredEntity = entity;
-						}
-						
-						if(rightMouseClicked())
-						{
-							// Trigger event on clicked entity
-						}
-						
-					}
+					hoveredEntities.add(entity);
 				}
 				else
 				{
-					if(entity.isHovered())
-					{
-						entity.setHovered(false);
-					}
-					
+					entity.setHovered(false);
 				}
-				
-				
 			}
 			
 		}
 		
-		if(leftMouseClicked())
+		if(hoveredEntities.size() > 1)
 		{
-			boolean clickedWhiteSpace = true;
-			for(Ability ability: abilities)
+			Entity closest = hoveredEntities.get(0);
+			closest.setHovered(false);
+			float closestDistance = Maths.distance(player.getPosition(), closest.getPosition());
+			for(int i = 1; i < hoveredEntities.size(); i++)
 			{
-				if(intersectsGUI(ability.getGui()))
+				Entity current = hoveredEntities.get(i);
+				float distanceToPlayer = Maths.distance(player.getPosition(), current.getPosition());
+				if(distanceToPlayer < closestDistance)
 				{
-					ability.doEffect(entities);
-					clickedWhiteSpace = false;
+					closest = current;
 				}
+				current.setHovered(false);
 			}
 			
-			if(currentHoveredEntity != null && clickedWhiteSpace)
-			{
-				previousHoveredEntity = currentHoveredEntity;
-				currentHoveredEntity = null;
-			}
-			
+			closest.setHovered(true);
 		}
+		else
+		{
+			if(hoveredEntities.size() > 0)
+			{
+				hoveredEntities.get(0).setHovered(true);
+			}
+		}
+
 		
 		for(GUI gui: guis)
 		{
@@ -158,6 +151,77 @@ public class MousePicker {
 				}
 			}
 		}
+		
+		if(leftMouseClicked())
+		{
+			for(Ability ability: abilities)
+			{
+				if(ability.getGui().isHovered())
+				{
+					ability.doEffect(entities);
+					clickedWhiteSpace = false;
+				}
+			}
+			
+			for(GUI gui: guis)
+			{
+				if(gui.isClickable())
+				{
+					if(gui.isHovered() && gui.isVisible())
+					{
+						gui.setClicked(true);
+						//clickedWhiteSpace = false;
+					}
+				}
+			}
+			
+			for(Entity entity: World.worldObjects)
+			{
+				if(entity.isClickable())
+				{
+					if(entity.isHovered())
+					{
+						if(currentHoveredEntity != null)
+						{
+							if(currentHoveredEntity.equals(entity))
+							{
+								previousHoveredEntity = null;
+							}
+							else
+							{
+								previousHoveredEntity = currentHoveredEntity;
+								currentHoveredEntity = entity;
+							}
+						}
+						else
+						{
+							previousHoveredEntity = currentHoveredEntity;
+							currentHoveredEntity = entity;
+						}
+
+						clickedWhiteSpace = false;
+					}
+				}
+			}
+
+			if(currentHoveredEntity != null && clickedWhiteSpace)
+			{
+				previousHoveredEntity = currentHoveredEntity;
+				currentHoveredEntity = null;
+			}
+			
+		}
+		else
+		{
+			for(GUI gui: guis)
+			{
+				if(gui.isClickable())
+				{
+					gui.setClicked(false);
+				}
+			}
+		}
+		
 		
 	}
 	

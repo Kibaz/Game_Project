@@ -25,7 +25,7 @@ public abstract class Component {
 	
 	public abstract void start();
 	
-	protected abstract void cleanUp();
+	public abstract void cleanUp();
 
 	public Entity getEntity() {
 		return entity;

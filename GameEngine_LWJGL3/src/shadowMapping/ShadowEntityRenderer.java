@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
 
+import components.AnimationComponent;
 import entities.Entity;
 import models.BaseModel;
 import models.TexturedModel;
@@ -42,6 +43,16 @@ public class ShadowEntityRenderer {
 			for(Entity entity: batch)
 			{
 				prepareEntity(entity);
+				AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+				if(animationComponent != null)
+				{
+					shader.loadJointTransforms(animationComponent.getJointTransforms());
+					shader.loadAnimated(true);
+				}
+				else
+				{
+					shader.loadAnimated(false);
+				}
 				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 			}
 			if(tmodel.getTexture().isHasTransparency())
@@ -57,12 +68,19 @@ public class ShadowEntityRenderer {
 		GL30.glBindVertexArray(model.getVaoID());
 		GL20.glEnableVertexAttribArray(0);
 		GL20.glEnableVertexAttribArray(1);
+		if(model.hasAnimationData())
+		{
+			GL20.glEnableVertexAttribArray(3);
+			GL20.glEnableVertexAttribArray(4);
+		}
 	}
 	
 	private void unbindModel()
 	{
 		GL20.glDisableVertexAttribArray(0);
 		GL20.glDisableVertexAttribArray(1);
+		GL20.glDisableVertexAttribArray(3);
+		GL20.glDisableVertexAttribArray(4);
 		GL30.glBindVertexArray(0);
 	}
 	

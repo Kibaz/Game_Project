@@ -212,7 +212,7 @@ public class Collider extends Component{
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		loader.cleanUp();	
 	}
 

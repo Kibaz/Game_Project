@@ -48,7 +48,7 @@ public class HealthBarFrame extends Component{
 
 	@Override
 	protected void init() {
-		visible = true;
+		visible = false;
 		fontSize = 0.6f;
 		healthFrameTexture = new GUITexture(loader.loadTexture("res/basic_health_bar_frame.png"),new Vector2f(uiPosition),new Vector2f(0.2f,0.3f));
 		healthPoolTexture = new GUITexture(loader.loadTexture("res/basic_health_pool.png"), new Vector2f(uiPosition), new Vector2f(0.2f,0.3f));
@@ -66,16 +66,23 @@ public class HealthBarFrame extends Component{
 
 	@Override
 	public void update() {
-		levelInfo.setContent("Lv: " + level);
-		String healthTextInfo = (health > 0) ? health + " / " + maxHealth : "DEAD";
-		healthInfo.setContent(healthTextInfo);
-		// Calculate current fraction of health
-		float scaleFactor = health / maxHealth;
-		// Scale health pool by health factor
-		float prevScale = healthPoolTexture.getScale().x;
-		healthPoolTexture.getScale().x = scaleFactor * maxScale;
-		// Translate health pool gui to compensate for origin scaling
-		healthPoolTexture.getPosition().x -= (prevScale - healthPoolTexture.getScale().x) * 0.725f;
+		if(entity != null)
+		{
+			EntityInformation entityInfo = entity.getComponentByType(EntityInformation.class);
+			if(entityInfo != null)
+			{
+				levelInfo.setContent("Lv: " + entityInfo.getLevel());
+				String healthTextInfo = (entityInfo.getHealth() > 0) ? entityInfo.getHealth() + " / " + entityInfo.getMaxHealth() : "DEAD";
+				healthInfo.setContent(healthTextInfo);
+				// Calculate current fraction of health
+				float scaleFactor = entityInfo.getHealth() / (float) entityInfo.getMaxHealth();
+				// Scale health pool by health factor
+				float prevScale = healthPoolTexture.getScale().x;
+				healthPoolTexture.getScale().x = scaleFactor * maxScale;
+				// Translate health pool gui to compensate for origin scaling
+				healthPoolTexture.getPosition().x -= (prevScale - healthPoolTexture.getScale().x) * 0.725f;
+			}
+		}
 		
 		if(visible)
 		{
@@ -93,9 +100,6 @@ public class HealthBarFrame extends Component{
 			healthPool.setVisible(false);
 			healthFrame.setVisible(false);
 		}
-		
-
-
 	}
 
 	@Override
@@ -104,7 +108,7 @@ public class HealthBarFrame extends Component{
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		loader.cleanUp();
 	}
 

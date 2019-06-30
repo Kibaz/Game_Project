@@ -12,7 +12,6 @@ import org.lwjgl.util.vector.Vector4f;
 
 import entities.Camera;
 import entities.Light;
-import entities.Player;
 import models.BaseModel;
 import rendering.Loader;
 import rendering.Window;

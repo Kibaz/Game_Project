@@ -9,20 +9,24 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
+
+import components.AnimationComponent;
+import components.EntityInformation;
 import entities.Entity;
 import models.BaseModel;
 import models.TexturedModel;
-import shaders.BasicShader;
+import shaders.EntityShader;
 import shaders.StencilShader;
 import texturing.ModelTexture;
 import utils.Maths;
 
 public class EntityRenderer {
 	
-	private BasicShader shader;
+	//private BasicShader shader;
+	private EntityShader shader;
 	private StencilShader stencilShader;
 	
-	public EntityRenderer(BasicShader shader,StencilShader stencilShader,Matrix4f projectionMatrix)
+	public EntityRenderer(EntityShader shader,StencilShader stencilShader,Matrix4f projectionMatrix)
 	{
 		this.shader = shader;
 		this.stencilShader = stencilShader;
@@ -49,7 +53,6 @@ public class EntityRenderer {
 		
 		GL11.glClear(GL11.GL_STENCIL_BUFFER_BIT);
 		
-		
 		shader.start();
 		for(TexturedModel model:entities.keySet())
 		{			
@@ -57,14 +60,24 @@ public class EntityRenderer {
 			List<Entity> batch = entities.get(model);
 			for(Entity entity:batch)
 			{
+				
 				prepareEntity(entity);
+				AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+				if(animationComponent != null)
+				{
+					shader.loadAnimationComponent(true);
+					shader.loadJointTransforms(animationComponent.getJointTransforms());
+				}
+				else
+				{
+					shader.loadAnimationComponent(false);
+				}
 				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 			}
 			unbindTexturedModel();
 			
 		}
 		shader.stop();
-		
 		GL11.glColorMask(true, true, true, true);
 		GL11.glDepthMask(true);
 		
@@ -82,7 +95,21 @@ public class EntityRenderer {
 				if(entity.isHovered())
 				{
 					prepareEntityForStencil(entity,0.025f);
-					stencilShader.loadHostility(true);
+					AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+					if(animationComponent != null)
+					{
+						stencilShader.loadAnimationComponent(true);
+						stencilShader.loadJointTransforms(animationComponent.getJointTransforms());
+					}
+					else
+					{
+						stencilShader.loadAnimationComponent(false);
+					}
+					EntityInformation info = entity.getComponentByType(EntityInformation.class);
+					if(info != null)
+					{
+						stencilShader.loadHostility(info.isHostile());
+					}
 					GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 				}
 				
@@ -103,6 +130,16 @@ public class EntityRenderer {
 			for(Entity entity:batch)
 			{
 				prepareEntity(entity);
+				AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+				if(animationComponent != null)
+				{
+					shader.loadAnimationComponent(true);
+					shader.loadJointTransforms(animationComponent.getJointTransforms());
+				}
+				else
+				{
+					shader.loadAnimationComponent(false);
+				}
 				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 			}
 			unbindTexturedModel();
@@ -118,6 +155,11 @@ public class EntityRenderer {
 		GL20.glEnableVertexAttribArray(0);
 		GL20.glEnableVertexAttribArray(1);
 		GL20.glEnableVertexAttribArray(2);
+		if(model.getBaseModel().hasAnimationData())
+		{
+			GL20.glEnableVertexAttribArray(3);
+			GL20.glEnableVertexAttribArray(4);
+		}
 		ModelTexture texture = model.getTexture();
 		if(texture.isHasTransparency())
 		{
@@ -137,6 +179,11 @@ public class EntityRenderer {
 		GL20.glEnableVertexAttribArray(0);
 		GL20.glEnableVertexAttribArray(1);
 		GL20.glEnableVertexAttribArray(2);
+		if(model.getBaseModel().hasAnimationData())
+		{
+			GL20.glEnableVertexAttribArray(3);
+			GL20.glEnableVertexAttribArray(4);
+		}
 		ModelTexture texture = model.getTexture();
 		if(texture.isHasTransparency())
 		{
@@ -167,6 +214,8 @@ public class EntityRenderer {
 		GL20.glDisableVertexAttribArray(0);
 		GL20.glDisableVertexAttribArray(1);
 		GL20.glDisableVertexAttribArray(2);
+		GL20.glDisableVertexAttribArray(3);
+		GL20.glDisableVertexAttribArray(4);
 		GL30.glBindVertexArray(0);
 	}
 

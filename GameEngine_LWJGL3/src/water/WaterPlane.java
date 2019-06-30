@@ -1,14 +1,7 @@
 package water;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL14;
-import org.lwjgl.opengl.GL30;
-
 import entities.Camera;
-import entities.Player;
-import models.BaseModel;
+import entities.Entity;
 import rendering.Loader;
 import texturing.CausticTexture;
 
@@ -89,12 +82,12 @@ public class WaterPlane {
 		}
 	}
 	
-	private void updateHeightmap(Player player)
+	private void updateHeightmap(Entity player)
 	{
 
 	}
 	
-	public void update(Player player)
+	public void update(Entity player)
 	{
 		if(!isPlayerInWater(player))
 		{
@@ -122,7 +115,7 @@ public class WaterPlane {
 		return false;
 	}
 	
-	public boolean isPlayerInWater(Player player)
+	public boolean isPlayerInWater(Entity player)
 	{
 		float waterStartZ = z - SIZE;
 		float waterEndZ = z + SIZE;

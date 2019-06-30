@@ -3,7 +3,7 @@ package combat;
 import java.util.Random;
 
 import components.CombatManager;
-import components.HealthBarFrame;
+import components.EntityInformation;
 import entities.Entity;
 
 public class InstantDamage extends Effect {
@@ -40,11 +40,11 @@ public class InstantDamage extends Effect {
 
 	@Override
 	public void execute(Entity entity) {
-		HealthBarFrame healthBar = entity.getComponentByType(HealthBarFrame.class);
+		EntityInformation info = entity.getComponentByType(EntityInformation.class);
 		
 		int damage = damageCalculator.nextInt(maxDamage - minDamage + 1) + minDamage;
 		
-		healthBar.setHealth(healthBar.getHealth() - damage);
+		info.setHealth(info.getHealth() - damage);
 		
 		this.ended = true;
 		

@@ -57,7 +57,7 @@ public class Motion extends Component {
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		// TODO Auto-generated method stub
 		
 	}

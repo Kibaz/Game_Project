@@ -14,12 +14,24 @@ public class BaseModel {
 	
 	private Material material;
 	
+	private boolean animationData;
+	
 	public BaseModel(int ID, int vertCount, float[] vertices, int[] indices)
 	{
 		this.vaoID = ID;
 		this.vertCount = vertCount;
 		this.vertices = vertices;
 		this.indices = indices;
+		this.animationData = false;
+	}
+	
+	public BaseModel(int ID, int vertCount, float[] vertices, int[] indices, boolean animationData)
+	{
+		this.vaoID = ID;
+		this.vertCount = vertCount;
+		this.vertices = vertices;
+		this.indices = indices;
+		this.animationData = animationData;
 	}
 	
 	public BaseModel(int ID, int vertCount)
@@ -170,6 +182,11 @@ public class BaseModel {
 	public int compareTo(BaseModel other)
 	{
 		return this.getVaoID() - other.getVaoID();
+	}
+	
+	public boolean hasAnimationData()
+	{
+		return animationData;
 	}
 	
 	

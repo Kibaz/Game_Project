@@ -128,6 +128,14 @@ public class Entity {
 		return null;
 	}
 	
+	public void cleanUpComponents()
+	{
+		for(String componentName: components.keySet())
+		{
+			components.get(componentName).cleanUp();
+		}
+	}
+	
 	public TexturedModel getModel() {
 		return texturedModel;
 	}
@@ -238,7 +246,7 @@ public class Entity {
 		increaseRotation(rx,ry,rz);
 	}
 	
-	public boolean isPlayerInClickRange(Player player)
+	public boolean isPlayerInClickRange(Entity player)
 	{
 		Vector3f centre = aabb.getCentre(); // Get centre of the entity's model
 		

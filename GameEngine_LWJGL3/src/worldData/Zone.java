@@ -5,7 +5,6 @@ import java.util.List;
 
 import entities.Entity;
 import entities.Light;
-import entities.Player;
 import rendering.Loader;
 import terrains.Terrain;
 import water.WaterPlane;
@@ -74,7 +73,7 @@ public abstract class Zone {
 	// Other methods
 	
 	// Check whether the player is in the specified zone
-	public boolean isPlayerInZone(Player player)
+	public boolean isPlayerInZone(Entity player)
 	{
 		for(Terrain terrain: terrains)
 		{

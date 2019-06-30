@@ -1,11 +1,14 @@
 package components;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
+import combat.Ability;
 import entities.Entity;
 import rendering.Window;
 import terrains.Terrain;
@@ -32,6 +35,8 @@ public class AI extends Component {
 	private List<Terrain> terrains;
 	private List<Entity> enemies;
 	
+	private Map<String, Ability> abilities;
+	
 	private Vector2f target;
 	private Entity targetToAttack;
 	
@@ -39,6 +44,8 @@ public class AI extends Component {
 	private Vector2f acceleration;
 	
 	private Vector3f spawnLocation;
+	
+	private Random randomiser; // Randomiser
 	
 	private enum State {
 		IDLE,
@@ -53,12 +60,13 @@ public class AI extends Component {
 	private float idleTime;
 	private float idleTimeLimit;
 	
-	public AI(String name, List<Entity> entities, List<Terrain> terrains, List<Entity> enemies)
+	public AI(String name, List<Entity> entities, List<Terrain> terrains, List<Entity> enemies, Map<String,Ability> abilities)
 	{
 		super(name);
 		this.entities = entities;
 		this.terrains = terrains;
 		this.enemies = enemies;
+		this.abilities = abilities;
 		init();
 	}
 
@@ -69,6 +77,7 @@ public class AI extends Component {
 		currentVelocity = new Vector2f(0,0);
 		acceleration = new Vector2f(0,0);
 		state = State.WANDER;
+		randomiser = new Random();
 	}
 
 	@Override
@@ -77,7 +86,7 @@ public class AI extends Component {
 	}
 
 	@Override
-	protected void cleanUp() {
+	public void cleanUp() {
 		
 	}
 
@@ -89,12 +98,40 @@ public class AI extends Component {
 			
 			move();
 			
-			HealthBarFrame healthBar = entity.getComponentByType(HealthBarFrame.class);
-			if(healthBar != null)
+			EntityInformation info = entity.getComponentByType(EntityInformation.class);
+			if(info != null)
 			{
-				if(healthBar.getHealth() <= 0)
+				if(info.getHealth() <= 0)
 				{
 					state = State.DEAD;
+				}
+			}
+			
+			// Update ability damage indicators
+			for(String abilityName: abilities.keySet())
+			{
+				abilities.get(abilityName).getDamageIndicator().setPosition(entity.getPosition());
+				abilities.get(abilityName).getDamageIndicator().setRotY(entity.getRotY());
+				abilities.get(abilityName).update();
+			}
+			
+			if(targetToAttack != null)
+			{
+				CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
+				if(combatManager != null)
+				{
+					combatManager.setInCombat(true);
+				}
+				
+				if(state == State.DEAD)
+				{
+					// Grant experience to target
+					EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
+					float experienceGain = (info.getLevel() / (float) targetInfo.getLevel()) * (0.1f * targetInfo.getExperienceCap());
+					targetInfo.setExperience(targetInfo.getExperience() + (int) experienceGain);
+					combatManager.setInCombat(false);
+					targetToAttack = null;
+					QuestTracker.notifyTracker(info);
 				}
 			}
 		}
@@ -109,6 +146,14 @@ public class AI extends Component {
 			target = new Vector2f(targetToAttack.getPosition().x,targetToAttack.getPosition().z);
 			currentSpeed = RUN_SPEED;
 			alertToEnemies();
+			attack();
+			
+			// Set entity in combat
+			CombatManager combatManager = entity.getComponentByType(CombatManager.class);
+			if(combatManager != null)
+			{
+				combatManager.setInCombat(true);
+			}
 			
 			// Play running animation
 		}
@@ -132,12 +177,45 @@ public class AI extends Component {
 			currentSpeed = RUN_SPEED;
 			target = new Vector2f(spawnLocation.x,spawnLocation.z);
 			retreat();
+			
+			// Set entity not in combat
+			CombatManager combatManager = entity.getComponentByType(CombatManager.class);
+			if(combatManager != null)
+			{
+				combatManager.setInCombat(false);
+			}
 		}
 		else if(state == State.DEAD)
 		{
 			currentSpeed = 0;
 			target = null;
 			// Play death animation initially (when state just changed)
+		}
+	}
+	
+	private void attack()
+	{
+		Ability abilityToUse = null;
+		List<Ability> abilitiesAvailable = new ArrayList<>();
+		for(String abilityName: abilities.keySet())
+		{
+			Ability ability = abilities.get(abilityName);
+			if(!ability.isOnCooldown())
+			{
+				abilitiesAvailable.add(ability);
+			}
+		}
+		
+		int size = abilitiesAvailable.size();
+		if(size > 0)
+		{
+			int index = randomiser.nextInt(size);
+			abilityToUse = abilitiesAvailable.get(index);
+		}
+		
+		if(abilityToUse != null)
+		{
+			abilityToUse.doEffect(enemies);
 		}
 	}
 	
@@ -200,19 +278,35 @@ public class AI extends Component {
 		{
 			Vector2f dirToenemy = Vector2f.sub(new Vector2f(enemy.getPosition().x,enemy.getPosition().z),
 					new Vector2f(entity.getPosition().x, entity.getPosition().z), null);
-			Vector2f facingVector = new Vector2f((float) Math.sin(Math.toRadians(entity.getRotY())), (float) Math.cos(Math.toRadians(entity.getRotY())));
-			float dot = Vector2f.dot(facingVector, dirToenemy);
-			float magDiv = dirToenemy.length() * facingVector.length();
-			float angle = (float) Math.toDegrees(Math.acos(dot/magDiv));
 			float distance = dirToenemy.length();
 
 			// Check if enemy is in line of sight and within aggro range
 			if(distance < aggroRange)
 			{
+				Vector2f facingVector = new Vector2f((float) Math.sin(Math.toRadians(entity.getRotY())), (float) Math.cos(Math.toRadians(entity.getRotY())));
+				float dot = Vector2f.dot(facingVector, dirToenemy);
+				float magDiv = dirToenemy.length() * facingVector.length();
+				float angle = (float) Math.toDegrees(Math.acos(dot/magDiv));
 				if(angle < 120)
 				{
 					targetToAttack = enemy;
-					state = State.ATTACK;
+					
+					EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
+					if(targetInfo != null)
+					{
+						if(targetInfo.getHealth() <= 0)
+						{
+							if(state == State.ATTACK)
+							{
+								state = State.RETREAT;
+							}
+							
+						}
+						else
+						{
+							state = State.ATTACK;
+						}
+					}
 				}
 
 			}
@@ -221,6 +315,12 @@ public class AI extends Component {
 				if(state == State.ATTACK)
 				{
 					state = State.RETREAT;
+					CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
+					if(combatManager != null)
+					{
+						combatManager.setInCombat(false);
+					}
+					targetToAttack = null;
 				}
 				
 			}

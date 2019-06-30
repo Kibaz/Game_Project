@@ -14,7 +14,7 @@ public class Camera {
 	private float yaw = 0;
 	private float roll;
 	
-	private Player player;
+	private Entity player;
 	
 	private float distFromPlayer = 50;
 	private float playerOrbit = 0;
@@ -22,7 +22,7 @@ public class Camera {
 	private float zoom = 20;
 	
 	
-	public Camera(Player player)
+	public Camera(Entity player)
 	{
 		this.player = player;
 	}

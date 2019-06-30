@@ -5,7 +5,6 @@ import org.lwjgl.util.vector.Vector3f;
 
 import entities.Camera;
 import entities.Light;
-import entities.Player;
 import shaders.ShaderProgram;
 import utils.Maths;
 
