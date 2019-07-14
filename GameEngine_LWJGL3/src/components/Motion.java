@@ -61,6 +61,20 @@ public class Motion extends Component {
 		// TODO Auto-generated method stub
 		
 	}
+	
+	public void jump()
+	{
+		if(!airborne)
+		{
+			airborne = true;
+			jumpSpeed = UP_FORCE;
+		}
+	}
+	
+	public void applyGravity()
+	{
+		jumpSpeed += GRAVITY * Window.getFrameTime();
+	}
 
 	public float getRunSpeed() {
 		return runSpeed;

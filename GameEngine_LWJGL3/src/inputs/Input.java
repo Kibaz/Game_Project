@@ -1,30 +1,33 @@
 package inputs;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-public class Input {
+public class Input{
 	
-	// Automatic increments of index
-	private static final AtomicInteger count = new AtomicInteger(0);
 	// Fields
-	private int index; // Hold order reference of inputs
-	private float timeStamp; // Store timeStamp of input
+	private float time; // Store timeStamp of input
+	
+	private String inputStr;
 	
 	// Constructor 
-	public Input(float timeStamp)
+	public Input(String inputStr,float time)
 	{
-		this.timeStamp = timeStamp;
-		// Every time a new input is registered, increment index automatically
-		this.index = count.incrementAndGet();
+		this.time = time;
+		this.inputStr = inputStr;
 	}
 
 	// Getters
-	public int getIndex() {
-		return index;
+	public float getTime() {
+		return time;
 	}
-
-	public double getTimeStamp() {
-		return timeStamp;
+	
+	public String getInput()
+	{
+		return inputStr;
+	}
+	
+	public byte[] toBytes()
+	{
+		String message = inputStr + "," + time;
+		return message.getBytes();
 	}
 	
 	

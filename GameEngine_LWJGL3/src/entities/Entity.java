@@ -8,7 +8,6 @@ import org.lwjgl.util.vector.Vector3f;
 
 import components.Component;
 import models.TexturedModel;
-import networking.Client;
 import physics.AABB;
 import physics.Triangle;
 import rendering.Window;
@@ -227,7 +226,7 @@ public class Entity {
 	}
 	
 	// Interpolate rotation
-	public void interpolateRotation(float prevRotX, float prevRotY, float prevRotZ,
+	/*public void interpolateRotation(float prevRotX, float prevRotY, float prevRotZ,
 									float nextRotX, float nextRotY, float nextRotZ)
 	{
 		if(Client.getCurrentPlayerPosition() == null || Client.getUpdateTime() == 0)
@@ -244,7 +243,7 @@ public class Entity {
 		float rz = (diffZ / Client.getUpdateTime()) * Window.getFrameTime();
 		
 		increaseRotation(rx,ry,rz);
-	}
+	}*/
 	
 	public boolean isPlayerInClickRange(Entity player)
 	{

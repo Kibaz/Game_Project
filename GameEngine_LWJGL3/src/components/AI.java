@@ -135,7 +135,6 @@ public class AI extends Component {
 				}
 			}
 		}
-		
 	}
 	
 	private void verifyAction()

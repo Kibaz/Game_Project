@@ -1,20 +1,16 @@
 package runtime;
 
-import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.UUID;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
-import animation.AnimatedEntity;
 import animation.AnimationLoader;
 import buffers.FBO;
 import combat.Ability;
@@ -24,14 +20,10 @@ import combat.ChainedEffect;
 import combat.DOT;
 import combat.Effect;
 import combat.InstantDamage;
-import components.AI;
 import components.AnimationComponent;
-import components.Collider;
 import components.CombatManager;
-import components.Controller;
 import components.EntityInformation;
 import components.EntityProfile;
-import components.FloatingHealthBar;
 import components.HealthBarFrame;
 import components.Motion;
 import components.ProgressBar;
@@ -48,7 +40,10 @@ import guis.HUD;
 import guis.HUDRenderer;
 import inputs.MousePicker;
 import interfaceObjects.Quest;
+import models.TexturedModel;
 import networking.Client;
+import networking.PeerClient;
+import networking.UDPClient;
 import objectives.Enumeration;
 import objectives.Task;
 import particles.ParticleManager;
@@ -66,13 +61,14 @@ import worldData.TigranStartZone;
 import worldData.World;
 
 public class Main {
+	
+	public static TexturedModel testModel;
 
 	public static void main(String[] args) throws UnknownHostException, SocketException {
 		
 		// Initialise lists of terrains, entities, animated characters, lights etc...
 		List<Terrain> terrains = new ArrayList<>(); // Terrains
 		List<Light> lights = new ArrayList<>(); // Lights
-		List<AnimatedEntity> animatedEntities = new ArrayList<>();
 		List<Entity> entities = new ArrayList<>(); // Entities
 		List<WaterPlane> water = new ArrayList<>(); // Any water?
 		List<GUI> guis = new ArrayList<>(); // Store GUIs
@@ -86,11 +82,6 @@ public class Main {
 		 * text etc...
 		 */
 		Loader loader = new Loader();
-		
-		// Initialise Client communications program
-		Client.serverAddress = InetAddress.getByName("127.0.0.1"); // Server IP address
-		Client.serverPort = 8129; // Server port
-		// Start listening for responses from the server
 		
 		// Initialise window
 		Window.init();
@@ -119,12 +110,21 @@ public class Main {
 		Entity player = AnimationLoader.loadAnimatedFile("res/model.dae","res/Character Texture.png",new Vector3f(100,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1,loader);
 		player.getComponentByType(AnimationComponent.class).setCurrentAnimation("");
+		/*player.addComponent(new Motion());
+		player.getComponentByType(Motion.class).setRunSpeed(20);
+		player.getComponentByType(Motion.class).setWalkSpeed(10);
+		player.addComponent(new Collider("collider",terrains));
+		player.getComponentByType(Collider.class).start();*/
+		
+		// Handler networking initialisation
+		Client client = new Client(player,"127.0.0.1",8061,8060);
+		client.connect();
+		client.listen();
+		
 		player.addComponent(new Motion());
 		player.getComponentByType(Motion.class).setRunSpeed(20);
 		player.getComponentByType(Motion.class).setWalkSpeed(10);
-		player.addComponent(new Controller("controller"));
-		player.addComponent(new Collider("collider",terrains));
-		player.getComponentByType(Collider.class).start();
+		//player.addComponent(new Controller("controller",client));
 		player.addComponent(new EntityInformation("Player",1,100,100));
 		player.addComponent(playerHealthFrame);
 		player.addComponent(new CombatManager("combat_manager"));
@@ -179,57 +179,6 @@ public class Main {
 		
 		abilities.add(testAbility);
 		
-		for(int i = 0; i < 10; i++)
-		{
-			Entity cubeMob = new Entity(player.getModel(),new Vector3f(50,
-					tigranStartZone.getTerrains().get(0).getTerrainHeight(50, 50),50),-90,0,0,1);
-			cubeMob.getAABB().setRotation(-90, 0, 0);
-			cubeMob.setClickable(true);
-			HealthBarFrame mobHealthFrame = new HealthBarFrame("npc_health_frame",new Vector2f(-0.3f,0.9f),new Vector2f(0.22f,0.035f), new Vector2f(-0.1475f,0.035f));
-			FloatingHealthBar floatingHealthBar = new FloatingHealthBar("npc_floating_health");
-			List<Entity> mobEnemies = new ArrayList<>();
-			mobEnemies.add(player);
-			
-			InstantDamage instEffect = new InstantDamage(10,4);
-			ArcIndicator instIndicator = new ArcIndicator(cubeMob.getPosition(),0,15,20,15,120);
-			Ability testMobAbility = new Ability(null,"Stab","test",instIndicator,instEffect,3,Ability.Type.INSTANT);
-			
-			Map<String,Ability> mobAbilities = new HashMap<>();
-			mobAbilities.put(testMobAbility.getName(), testMobAbility);
-			AI mobAI = new AI("mob_ai",entities,terrains,mobEnemies,mobAbilities);
-			mobAI.setAggroRange(50);
-			mobAI.setAvoidanceForce(0.3f);
-			mobAI.setWanderRadius(50);
-			mobAI.setSlowingRadius(7);
-			mobAI.setSteerForce(0.1f);
-			cubeMob.addComponent(mobHealthFrame);
-			cubeMob.addComponent(floatingHealthBar);
-			cubeMob.addComponent(mobAI);
-			cubeMob.addComponent(new CombatManager("mob_combat_manager"));
-			EntityInformation mobInfo = new EntityInformation("Test Mob",1,100,100);
-			mobInfo.setHostile(true);
-			cubeMob.addComponent(mobInfo);
-			cubeMob.addComponent(new EntityProfile());
-			huds.add(floatingHealthBar.getHealthFrame());
-			huds.add(floatingHealthBar.getHealthPool());
-			guis.add(mobHealthFrame.getHealthFrame());
-			guis.add(mobHealthFrame.getHealthPool());
-			guis.add(cubeMob.getComponentByType(EntityProfile.class).getProfileDisplay());
-			entities.add(cubeMob);
-			World.addEntity(cubeMob);
-			
-			cubeMob.getComponentByType(HealthBarFrame.class).setMaxHealth(100);
-			cubeMob.getComponentByType(HealthBarFrame.class).setHealth(100);
-			cubeMob.getComponentByType(HealthBarFrame.class).setLevel(1);
-			cubeMob.getComponentByType(HealthBarFrame.class).setVisible(false);
-			cubeMob.getComponentByType(AI.class).start();
-			TextController.loadText(cubeMob.getComponentByType(HealthBarFrame.class).getHealthInfo());
-			TextController.loadText(cubeMob.getComponentByType(HealthBarFrame.class).getLevelInfo());
-		}
-		
-		Client.listen();
-		Client.send("Requesting connection".getBytes());
-		
 		// Set up player camera - 3rd person camera
 		Camera camera = new Camera(player);
 		
@@ -264,11 +213,22 @@ public class Main {
 		while(!Window.closed())
 		{
 			/*window.clear();*/
-			Client.sendInputs();
-			// Testing client side prediction
+			client.update(terrains);
+			
+			for(UUID clientID: Client.getPeerClients().keySet())
+			{
+				PeerClient current = Client.getPeerByID(clientID);
+				current.update();
+				if(!entities.contains(current.getEntity()))
+				{
+					entities.add(current.getEntity());
+				}
+			}
+
 			arcIndicator.setPosition(player.getPosition());
 			arcIndicator.setRotY(player.getRotY());
 			testAbility.update();
+			
 			for(Entity entity: entities)
 			{
 				entity.update();
@@ -277,12 +237,6 @@ public class Main {
 			for(Ability ability: abilities)
 			{
 				ability.update();
-			}
-			
-			//waterPlane.update(player);
-			if(Client.getCurrentPlayerPosition() != null)
-			{
-				testEnt.setPosition(Client.getCurrentPlayerPosition());
 			}
 			
 			picker.update(player,entities,guis,abilities);
@@ -323,14 +277,14 @@ public class Main {
 				float distance = 2 * (camera.getPosition().y - water.get(0).getHeight());
 				camera.getPosition().y -= distance;
 				camera.invertPitch();
-				renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight()+0.3f));
+				renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight()+0.3f));
 				camera.getPosition().y += distance;
 				camera.invertPitch();
 				waterFBOS.unbindFrameBuffer();
 				
 				// render refraction texture
 				waterFBOS.bindRefractionBuffer();
-				renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight() + 1f));
+				renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight() + 1f));
 				waterFBOS.unbindFrameBuffer();
 			}
 			else
@@ -341,14 +295,14 @@ public class Main {
 				float distance = 2 * (camera.getPosition().y - water.get(0).getHeight());
 				camera.getPosition().y -= distance;
 				camera.invertPitch();
-				renderer.renderScene(entities, terrains,  animatedEntities, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight()+0.3f));
+				renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0,1,0,-water.get(0).getHeight()+0.3f));
 				camera.getPosition().y += distance;
 				camera.invertPitch();
 				waterFBOS.unbindFrameBuffer();
 				
 				// render refraction texture
 				waterFBOS.bindRefractionBuffer();
-				renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight() + 1f));
+				renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0,-1,0,water.get(0).getHeight() + 1f));
 				waterFBOS.unbindFrameBuffer();
 			}
 			
@@ -356,7 +310,7 @@ public class Main {
 			GL11.glDisable(GL30.GL_CLIP_DISTANCE0);
 			
 			multiSampleFbo.bindFrameBuffer();
-			renderer.renderScene(entities, terrains, animatedEntities, lights, camera, new Vector4f(0,-1,0,0));
+			renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0,-1,0,0));
 			waterRenderer.render(water, camera, tigranStartZone.getSun(), renderer.getNearPlane(), renderer.getFarPlane());
 			multiSampleFbo.unbindFrameBuffer();
 			multiSampleFbo.resolveToFBO(GL30.GL_COLOR_ATTACHMENT0,outFbo);
@@ -385,6 +339,6 @@ public class Main {
 		}
 		PostProcessor.cleanUp();
 		Window.destroy();
-		Client.disconnect();
+		client.end();
 	}
 }

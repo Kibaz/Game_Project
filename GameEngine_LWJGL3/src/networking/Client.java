@@ -1,307 +1,389 @@
 package networking;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.UUID;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector3f;
+
+import components.Motion;
 import entities.Entity;
 import inputs.Input;
-import inputs.KeyInput;
 import inputs.KeyboardHandler;
-import models.BaseModel;
-import models.TexturedModel;
-import rendering.Loader;
 import rendering.Window;
-import runtime.Main;
-import texturing.ModelTexture;
+import terrains.Terrain;
 
 public class Client {
 	
-	// Global input tracking
-	public static Map<Integer,Input> inputs = new HashMap<>(); // Map to store inputs with reference to order/index
-	private static final double SEND_INPUT_INTERVAL = 0.03; // Fixed interval for sending input data
-	private static float inputTime = 0;
+	private static final float SYNC_THRESHOLD = 5;
+	private static final float INPUT_THRESHOLD = 1/8f;
 	
-	// Hold a reference ID for this client
-	private static int ID;
+	private Entity player;
 	
-	private static Map<Integer,PlayerData> otherEntities = new HashMap<>();
+	private InetAddress serverAddress;
+	private int serverTCPPort;
+	private int serverUDPPort;
 	
-	// Store client and server synchronisation time for updates
-	// This will calculate latency adjustments as well
-	private static float time = 0;
-	private static float currentUpdateTime = 0;
-	private static float prevUpdateTime = 0;
+	private UDPClient udpClient;
+	private TCPClient tcpClient;
 	
-	private static DatagramSocket udpSocket;
-	public static InetAddress serverAddress;
-	public static int serverPort;
-	private static Thread clientThread;
+	private float syncTime = 0;
+
+
+	private float inputTime = 0;
 	
-	// Store previous and current player positions received from server
-	// Use this data to implement entity interpolation
-	private static Vector3f previousPlayerPosition;
-	private static Vector3f currentPlayerPosition;
+	private List<Input> inputs;
+	private List<InputSnapshot> inputSnapshots;
 	
-	private static float prevPlayerRX;
-	private static float prevPlayerRY;
-	private static float prevPlayerRZ;
+	private InputSnapshot currentSnapshot;
 	
-	private static float currentPlayerRX;
-	private static float currentPlayerRY;
-	private static float currentPlayerRZ;
+	private int inputCount = 0;
 	
+	public static int lastReceivedSnapshot = 0;
+	private int previousSnapshot = 0;
 	
-	private static byte[] buffer = new byte[512];
+	public static Vector3f clientPosition = new Vector3f(100,0,90);
+	public static Vector3f clientRotation = new Vector3f(0,0,0);
 	
-	public static void listen()
+	public static UUID id;
+	
+	private static Map<UUID,PeerClient> peerClients = new HashMap<>();
+	
+	public Client(Entity player,String serverAddress, int serverUDPPort, int serverTCPPort)
 	{
 		try {
-			udpSocket = new DatagramSocket();
-		} catch (SocketException e) {
+			this.serverAddress = InetAddress.getByName(serverAddress);
+		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
-		
-		// Do not listen if UDP socket has not been initialised
-		if(udpSocket == null)
-		{
-			return;
-		}
-		
-		// run client listening for server information in separate thread
-		clientThread = new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				try
-				{
-					while(true)
-					{
-						// Configure Datagram packet
-						DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-						// Block whilst waiting for serve response
-						udpSocket.receive(packet);
-						
-						String msg = new String(packet.getData(), 0, packet.getLength());
-						if(msg.startsWith("ID: "))
-						{
-							ID = Integer.parseInt(msg.substring(msg.lastIndexOf(' ') + 1));
-						}
-						if(msg.startsWith("Position: "))
-						{
-							String values = msg.split(":")[1];
-							int receivedID = Integer.parseInt(values.substring(values.lastIndexOf(',')+1));
-							if( receivedID != ID && !otherEntities.containsKey(receivedID))
-							{
-								// Create a new entity to render
-								createEntity(values);
-							}
-							
-							Vector3f position = new Vector3f(Float.parseFloat(values.split(",")[0]),
-									Float.parseFloat(values.split(",")[1]),Float.parseFloat(values.split(",")[2]));
-							float rx = Float.parseFloat(values.split(",")[3]);
-							float ry = Float.parseFloat(values.split(",")[4]);
-							float rz = Float.parseFloat(values.split(",")[5]);
-							if(otherEntities.containsKey(receivedID))
-							{
-								PlayerData current = otherEntities.get(receivedID);
-								if(current.getNextPosition() != null)
-								{
-									current.setPreviousPosition(current.getNextPosition());
-								}
-								current.setNextPosition(position);
-							}
-							
-							currentPlayerPosition = position;
-						}
-						
-
-					}
-				}catch (SocketException e)
-				{
-					System.out.println("Client udp socket closed...");
-				}catch (IOException e)
-				{
-					e.printStackTrace();
-				}
-			}
-		});
-		
-		// Start client thread
-		clientThread.start();
+		this.serverUDPPort = serverUDPPort;
+		this.serverTCPPort = serverTCPPort;
+		this.udpClient = new UDPClient();
+		this.tcpClient = new TCPClient(serverAddress,serverTCPPort);
+		this.player = player;
+		inputs = new ArrayList<>();
+		inputSnapshots = new ArrayList<>();
+		currentSnapshot = new InputSnapshot();
 	}
 	
-	/*
-	 * Handle sending of client's input
-	 * Reduce network traffic by sending over strict interval
-	 * This will reduce the number of packets sent over the network
-	 * Thus reducing latency
-	 */
-	public static void sendInputs()
+	public void listen()
 	{
+		udpClient.listen();
+	}
+	
+	public void connect()
+	{
+		// UDP is connection-less, however send initialisation message to server
+		// Server will retrieve an IP Address and Port from client init message
+		udpClient.send("Connecting to server".getBytes(),serverAddress, serverUDPPort);
+	}
+	
+	public void update(List<Terrain> terrains)
+	{
+		
+		if(Client.id != null)
+		{
+			player.setPosition(Client.clientPosition);
+			player.setRotY(Client.clientRotation.y);
+		}
+		
+		reconcileInputs(terrains);
+		
+		syncTime += Window.getFrameTime();
+		if(syncTime > INPUT_THRESHOLD)
+		{
+			sync();
+			syncTime %= SYNC_THRESHOLD;
+		}
+		
 		inputTime += Window.getFrameTime();
-		if(inputTime > SEND_INPUT_INTERVAL)
+		if(inputTime > INPUT_THRESHOLD)
 		{
-			inputTime %= SEND_INPUT_INTERVAL; // Reset input timer
 			
-			// Scan inputs using iterator to remove inputs once processed
-			Iterator<Entry<Integer,Input>> it = inputs.entrySet().iterator();
-			// Count total time of key presses
-			float wKeyTime = 0;
-			float sKeyTime = 0;
-			float aKeyTime = 0;
-			float dKeyTime = 0;
-			while(it.hasNext())
+			if(currentSnapshot.getInputs().size() > 0 || !currentSnapshot.getInputs().isEmpty())
 			{
-				Input current = it.next().getValue();
-				if(current instanceof KeyInput)
+				// Send current input snapshot
+				sendSnapshot(currentSnapshot);
+				currentSnapshot = new InputSnapshot();
+				inputSnapshots.add(currentSnapshot);
+				//inputs.clear();
+			}
+			
+			inputTime %= INPUT_THRESHOLD;
+		}
+		
+		Motion motion = player.getComponentByType(Motion.class);
+		checkInputs(motion);
+		
+		// Client-side prediction apply inputs once sent
+		doClientPredictions(motion,terrains);
+		
+	}
+	
+	private void doClientPredictions(Motion motion, List<Terrain> terrains)
+	{
+		player.increaseRotation(0, motion.getCurrentTurnSpeed() * Window.getFrameTime(), 0);
+		
+		float distance = motion.getCurrentSpeed() * Window.getFrameTime();
+		float dx = (float) (distance * Math.sin(Math.toRadians(player.getRotY())));
+		float dz = (float) (distance * Math.cos(Math.toRadians(player.getRotY())));
+		motion.setCurrentVelocity(dx,0,dz);
+		
+		player.increasePosition(dx, 0, dz);
+		
+		motion.applyGravity();
+		
+		player.increasePosition(0, motion.getJumpSpeed() * Window.getFrameTime(), 0);
+		
+		collideWithTerrains(motion,terrains);
+		
+	}
+	
+	private void collideWithTerrains(Motion motion,List<Terrain> terrains)
+	{
+		for(Terrain terrain: terrains)
+		{
+			if(terrain.isEntityOnTerrain(player))
+			{
+				float terrainHeight = terrain.getTerrainHeight(player.getPosition().x, player.getPosition().z);
+				if(player.getPosition().y < terrainHeight)
 				{
-					KeyInput input = (KeyInput) current;
-					switch(input.getKey())
-					{
-					case 'w': wKeyTime += input.getTimeStamp(); break;
-					case 's': sKeyTime += input.getTimeStamp(); break;
-					case 'a': aKeyTime += input.getTimeStamp(); break;
-					case 'd': dKeyTime += input.getTimeStamp(); break;
-					case ' ': String message = " key pressed " + input.getTimeStamp(); send(message.getBytes()); break;
-					}
+					player.getPosition().y = terrainHeight;
+					motion.setAirborne(false);
 				}
-				
-				it.remove();
-			}
-			
-			if(wKeyTime > 0)
-			{
-				String message = "w key pressed " + wKeyTime;
-				send(message.getBytes());
-			}
-			
-			if(sKeyTime > 0)
-			{
-				String message = "s key pressed " + sKeyTime;
-				send(message.getBytes());
-			}
-			
-			if(aKeyTime > 0)
-			{
-				String message = "a key pressed " + aKeyTime;
-				send(message.getBytes());
-			}
-			
-			if(dKeyTime > 0)
-			{
-				String message = "d key pressed " + dKeyTime;
-				send(message.getBytes());
 			}
 		}
-
 	}
 	
-	// Send data to the server
-	public static void send(byte[] data)
+	private void checkInputs(Motion motion)
 	{
-		try {
-			DatagramPacket packet = new DatagramPacket(data,data.length,serverAddress,serverPort);
-			udpSocket.send(packet);
-		} catch (IOException e) {
-			e.printStackTrace();
+		/* Check whether a key has been pressed */
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
+		{
+			motion.setCurrentSpeed(20);
+			Input input = new Input("w key pressed",Window.getFrameTime());
+			currentSnapshot.addInput(input);
+			inputs.add(input);
+		}
+		
+		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
+		{
+			motion.setCurrentSpeed(-10);
+			Input input = new Input("s key pressed",Window.getFrameTime());
+			currentSnapshot.addInput(input);
+			inputs.add(input);
+		}
+		else
+		{
+			motion.setCurrentSpeed(0);
+		}
+		
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
+		{
+			motion.setCurrentTurnSpeed(-160);
+			Input input = new Input("d key pressed",Window.getFrameTime());
+			currentSnapshot.addInput(input);
+			inputs.add(input);
+		}
+		
+		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
+		{
+			motion.setCurrentTurnSpeed(160);
+			Input input = new Input("a key pressed",Window.getFrameTime());
+			currentSnapshot.addInput(input);
+			inputs.add(input);
+		}
+		else
+		{
+			motion.setCurrentTurnSpeed(0);
+		}
+		
+		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE)){
+			motion.jump();
+			Input input = new Input("space key pressed",Window.getFrameTime());
+			currentSnapshot.addInput(input);
+			inputs.add(input);
 		}
 	}
 	
-	public static void disconnect()
+	private void applyInputs(List<Input> inputs, List<Terrain> terrains)
 	{
-		send(("Client " + ID + " disconnected").getBytes());
-		udpSocket.close();
-		try {
-			clientThread.join(); // wait for thread to terminate
-		} catch (Exception e) {
-			e.printStackTrace();
+		for(Input input: inputs)
+		{
+			applyInput(terrains,input);
+		}
+		
+		Motion motion = player.getComponentByType(Motion.class);
+		motion.applyGravity();
+		
+		player.increasePosition(0, motion.getJumpSpeed() * Window.getFrameTime(), 0);
+		
+		for(Terrain terrain: terrains)
+		{
+			if(terrain.isEntityOnTerrain(player))
+			{
+				float terrainHeight = terrain.getTerrainHeight(player.getPosition().x, player.getPosition().z);
+				if(player.getPosition().y < terrainHeight)
+				{
+					player.getPosition().y = terrainHeight;
+					motion.setAirborne(false);
+				}
+			}
 		}
 	}
-
-	// Getters and Setters
 	
-
-	public static Vector3f getCurrentPlayerPosition() {
-		return currentPlayerPosition;
-	}
-
-	public static float getPrevPlayerRX() {
-		return prevPlayerRX;
-	}
-
-	public static float getPrevPlayerRY() {
-		return prevPlayerRY;
-	}
-
-	public static float getPrevPlayerRZ() {
-		return prevPlayerRZ;
-	}
-
-	public static float getCurrentPlayerRX() {
-		return currentPlayerRX;
-	}
-
-	public static float getCurrentPlayerRY() {
-		return currentPlayerRY;
-	}
-
-	public static float getCurrentPlayerRZ() {
-		return currentPlayerRZ;
-	}
-
-	public static Vector3f getPreviousPlayerPosition() {
-		return previousPlayerPosition;
-	}
-
-	public static void setPreviousPlayerPosition(Vector3f previousPlayerPosition) {
-		Client.previousPlayerPosition = previousPlayerPosition;
-	}
-	
-	public static float getUpdateTime()
+	private void reconcileInputs(List<Terrain> terrains)
 	{
-		return currentUpdateTime - prevUpdateTime;
+		int i = 0;
+		while(i < inputSnapshots.size())
+		{
+			InputSnapshot snapshot = inputSnapshots.get(i);
+			if(snapshot.getIndex() <= Client.lastReceivedSnapshot)
+			{
+				inputSnapshots.remove(i);
+			}
+			else
+			{
+				applyInputs(snapshot.getInputs(),terrains);
+				i++;
+			}
+		}
 	}
-
+	
+	private void applyInput(List<Terrain> terrains,Input input)
+	{
+		Motion motion = player.getComponentByType(Motion.class);
+		
+		if(input.getInput().startsWith("w "))
+		{
+			motion.setCurrentSpeed(20);
+		}	
+		else if(input.getInput().startsWith("s "))
+		{
+			motion.setCurrentSpeed(-10);
+		}
+		else
+		{
+			motion.setCurrentSpeed(0);
+			motion.setCurrentVelocity(0,0,0);
+		}
+		
+		if(input.getInput().startsWith("d "))
+		{
+			motion.setCurrentTurnSpeed(-160);
+			
+		}
+		else if(input.getInput().startsWith("a "))
+		{
+			motion.setCurrentTurnSpeed(160);
+		}
+		else
+		{
+			motion.setCurrentTurnSpeed(0);
+		}
+		
+		if(input.getInput().startsWith("space "))
+		{
+			motion.jump();
+		}
+		
+		player.increaseRotation(0, motion.getCurrentTurnSpeed() * input.getTime(), 0);
+		
+		float distance = motion.getCurrentSpeed() * input.getTime();
+		float dx = (float) (distance * Math.sin(Math.toRadians(player.getRotY())));
+		float dz = (float) (distance * Math.cos(Math.toRadians(player.getRotY())));
+		motion.setCurrentVelocity(dx,0,dz);
+		
+		player.increasePosition(motion.getCurrentVelocity().x, 
+				motion.getCurrentVelocity().y, 
+				motion.getCurrentVelocity().z);
+	}
+	
+	private void sendSnapshot(InputSnapshot snapshot)
+	{
+		sendUDP(snapshot.convertToByteArray());
+	}
+	
 	/*
-	 * Use this method to update the 
-	 * "updateTime" interval
+	 * Method to handle synchronisation of 
+	 * client's clock with the server's clock.
+	 * 
+	 * A packet is sent every 5 seconds to reduce
+	 * bottleneck whilst ensuring frequent enough
+	 * synchronisation for accurate calculations
+	 * of latency
 	 */
-	
-	public static void increaseUpdateTime()
+	public void sync()
 	{
-		time += Window.getFrameTime();
+		long timeStamp = System.currentTimeMillis();
+		String message = "SYNC:" + timeStamp;
+		sendUDP(message.getBytes());
 	}
 	
-	public static Map<Integer, PlayerData> getOtherEntities() {
-		return otherEntities;
+	public void sendUDP(byte[] data)
+	{
+		udpClient.send(data, serverAddress, serverUDPPort);
+	}
+	
+	public void end()
+	{
+		udpClient.end();
+	}
+	
+	public void processInput(Input input)
+	{
+		inputs.add(input);
+	}
+	
+	public int getInputCount()
+	{
+		return inputCount;
+	}
+	
+	public static int getLastReceivedSnapshot()
+	{
+		return lastReceivedSnapshot;
+	}
+	
+	public static void setLastReceivedSnapshot(int snapshot)
+	{
+		lastReceivedSnapshot = snapshot;
+	}
+	
+	public static Map<UUID,PeerClient> getPeerClients()
+	{
+		return peerClients;
+	}
+	
+	public static PeerClient getPeerByID(UUID id)
+	{
+		return peerClients.get(id);
+	}
+	
+	public static boolean checkPeerExists(UUID id)
+	{
+		return peerClients.containsKey(id);
+	}
+	
+	public static void addPeer(PeerClient peer)
+	{
+		peerClients.put(peer.getID(),peer);
+	}
+	
+	public static void removePeer(PeerClient peer)
+	{
+		peerClients.remove(peer.getID());
 	}
 
-	private static void createEntity(String data)
-	{
-		Vector3f position = new Vector3f(Float.parseFloat(data.split(",")[0]),
-				Float.parseFloat(data.split(",")[1]),Float.parseFloat(data.split(",")[2]));
-		float rx = Float.parseFloat(data.split(",")[3]);
-		float ry = Float.parseFloat(data.split(",")[4]);
-		float rz = Float.parseFloat(data.split(",")[5]);
-		//PlayerData playerData = new PlayerData(Main.testEnt,Main.testAnimChar);
-		//otherEntities.put(Integer.parseInt(data.split(",")[6]), playerData);
+	public List<Input> getInputs() {
+		return inputs;
 	}
-
-	
-	
-	
-	
-	
 	
 	
 	

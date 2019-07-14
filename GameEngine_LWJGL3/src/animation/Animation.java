@@ -2,6 +2,8 @@ package animation;
 
 public class Animation {
 	
+	public static final int MAX_WEIGHTS = 4;
+	
 	private double duration;
 	
 	private double ticksPerSecond;

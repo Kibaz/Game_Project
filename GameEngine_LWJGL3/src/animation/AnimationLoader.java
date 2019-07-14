@@ -35,6 +35,7 @@ import models.BaseModel;
 import models.Mesh;
 import models.TexturedModel;
 import rendering.Loader;
+import runtime.Main;
 import texturing.Material;
 import texturing.ModelTexture;
 import utils.Utils;
@@ -98,7 +99,8 @@ public class AnimationLoader {
 		 * texture data and specified position,
 		 * rotation and scale data
 		 */
-		Entity entity = new Entity(new TexturedModel(meshes[0],texture),position,rotX,rotY,rotZ,scale);
+		Main.testModel = new TexturedModel(meshes[0],texture);
+		Entity entity = new Entity(Main.testModel,position,rotX,rotY,rotZ,scale);
 		// Create an animated component using the processed animation data
 		AnimationComponent animationComponent = new AnimationComponent("animated_component");
 		animationComponent.setBones(bones);
@@ -318,7 +320,7 @@ public class AnimationLoader {
 	    for (int i = 0; i < numVertices; i++) {
 	        List<VertexWeight> vertexWeightList = weightSet.get(i);
 	        int size = vertexWeightList != null ? vertexWeightList.size() : 0;
-	        for (int j = 0; j < AnimatedEntity.MAX_WEIGHTS; j++) {
+	        for (int j = 0; j < Animation.MAX_WEIGHTS; j++) {
 	            if (j < size) {
 	                VertexWeight vw = vertexWeightList.get(j);
 	                weights.add(vw.getWeight());

@@ -1,116 +1,157 @@
 package networking;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 
 import org.lwjgl.util.vector.Vector3f;
 
-import animation.AnimatedCharacter;
 import entities.Entity;
-import models.TexturedModel;
-import peerData.PeerPlayerData;
 import rendering.Window;
-import utils.DataTransfer;
-import worldData.World;
 
 public class PeerClient {
 	
-	private PeerPlayerData playerData;
-	
-	private int id;
+	private UUID id;
 	
 	private Entity entity;
 	
-	private AnimatedCharacter animChar;
+	private Vector3f previousPosition;
+	private Vector3f nextPosition;
 	
-	private Map<Integer,String> serverRequests;
+	private float prevRotX, prevRotY, prevRotZ;
+	private float nextRotX, nextRotY, nextRotZ;
 	
-	public PeerClient()
+	public PeerClient(UUID id, Entity entity)
 	{
-		serverRequests = new HashMap<>();
-	}
-	
-	public int getID() {
-		return id;
-	}
-	
-	public Map<Integer,String> getServerRequests()
-	{
-		return serverRequests;
-	}
-	
-	public void setID(int id) {
 		this.id = id;
+		this.entity = entity;
 	}
 	
-	/* The ID of the client will always be appended to the end of
-	 * each packet received from the server
-	 * and thus can be extracted in the following way
-	 */
-	public void getIdFromBytes(byte[] data)
+	public void update()
 	{
-		byte[] idBytes = new byte[4];
-		int idData = data.length - 4;
-		int count = 0;
-		for(int i = idData; i < data.length; i++)
+		interpolatePosition();
+		interpolateRotation();
+	}
+	
+	public void interpolatePosition()
+	{
+		if(previousPosition == null || nextPosition == null)
 		{
-			idBytes[count] = data[i];
-			count++;
+			return;
 		}
 		
-		int clientID = DataTransfer.byteArrayToInteger(idBytes);
-		this.id = clientID;
+		Vector3f diffPos = Vector3f.sub(nextPosition, previousPosition, null);
+		float velX = diffPos.x / (1/8f);
+		float velY = diffPos.y / (1/8f);
+		float velZ = diffPos.z / (1/8f);
+		
+		float dx = velX * Window.getFrameTime();
+		float dy = velY * Window.getFrameTime();
+		float dz = velZ * Window.getFrameTime();
+		
+		entity.increasePosition(dx, dy, dz);
+	}
+	
+	public void interpolateRotation()
+	{
+		float diffX = nextRotX - prevRotX;
+		float diffY = nextRotY - prevRotY;
+		float diffZ = nextRotZ - prevRotZ;
+		
+		float rx = (diffX / (1/8f)) * Window.getFrameTime();
+		float ry = (diffY / (1/8f)) * Window.getFrameTime();
+		float rz = (diffZ / (1/8f)) * Window.getFrameTime();
+		
+		entity.increaseRotation(rx, ry, rz);
+		prevRotX = entity.getRotX();
+		prevRotY = entity.getRotY();
+		prevRotZ = entity.getRotZ();
+	}
+	
+	public UUID getID() {
+		return id;
+	}
+
+	public void setID(UUID id) {
+		this.id = id;
 	}
 
 	public Entity getEntity() {
 		return entity;
 	}
-	
-	public AnimatedCharacter getAnimaterCharacter()
-	{
-		return animChar;
-	}
-	
-	private void setEntity()
-	{
-		TexturedModel model = null;
-		for(Entity ent: World.worldObjects)
-		{
-			if(ent.getModel().getBaseModel().getVaoID() == playerData.getModelID())
-			{
-				model = ent.getModel();
-				break;
-			}
-		}
-		entity = new Entity(model, playerData.getPosition(), playerData.getRotX(),
-				playerData.getRotY(),playerData.getRotZ(),1);
-		createAnimatedCharacter();
-	}
-	
-	public void processRequest(int position, String request)
-	{
-		serverRequests.put(position, request);
-	}
-	
-	private void createAnimatedCharacter()
-	{
-		animChar = new AnimatedCharacter(entity);
+
+	public void setEntity(Entity entity) {
+		this.entity = entity;
 	}
 
-	public PeerPlayerData getPlayerData()
-	{
-		return playerData;
+	public Vector3f getPreviousPosition() {
+		return previousPosition;
 	}
 
-	public void setPlayerData(PeerPlayerData playerData)
-	{
-		this.playerData = playerData;
+	public void setPreviousPosition(Vector3f previousPosition) {
+		this.previousPosition = previousPosition;
+	}
+
+	public Vector3f getNextPosition() {
+		return nextPosition;
+	}
+
+	public void setNextPosition(Vector3f nextPosition) {
+		this.nextPosition = nextPosition;
+	}
+
+	public float getPrevRotX() {
+		return prevRotX;
+	}
+
+	public void setPrevRotX(float prevRotX) {
+		this.prevRotX = prevRotX;
+	}
+
+	public float getPrevRotY() {
+		return prevRotY;
+	}
+
+	public void setPrevRotY(float prevRotY) {
+		this.prevRotY = prevRotY;
+	}
+
+	public float getPrevRotZ() {
+		return prevRotZ;
+	}
+
+	public void setPrevRotZ(float prevRotZ) {
+		this.prevRotZ = prevRotZ;
+	}
+
+	public float getNextRotX() {
+		return nextRotX;
+	}
+
+	public void setNextRotX(float nextRotX) {
+		this.nextRotX = nextRotX;
+	}
+
+	public float getNextRotY() {
+		return nextRotY;
+	}
+
+	public void setNextRotY(float nextRotY) {
+		this.nextRotY = nextRotY;
+	}
+
+	public float getNextRotZ() {
+		return nextRotZ;
+	}
+
+	public void setNextRotZ(float nextRotZ) {
+		this.nextRotZ = nextRotZ;
 	}
 	
-	public void update()
-	{
-		
-	}
-
+	
+	
+	
+	
+	
+	
+	
 
 }

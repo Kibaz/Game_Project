@@ -7,17 +7,12 @@ import java.util.Map;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector4f;
-
-import animation.AnimatedEntity;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
 import models.TexturedModel;
-import shaders.AnimatedModelShader;
-import shaders.BasicShader;
 import shaders.EntityShader;
 import shaders.StencilShader;
 import shaders.TerrainShader;
@@ -46,17 +41,12 @@ public class AdvancedRenderer {
 	private TerrainRenderer terrainRenderer;
 	private TerrainShader terrainShader = new TerrainShader();
 	
-	private AnimationRenderer animRenderer;
-	private AnimatedModelShader animShader  = new AnimatedModelShader();
-	
 	private ShadowRenderer shadowRenderer;
 	
 	private SkyboxRenderer skyboxRenderer;
 	
 	private Map<TexturedModel,List<Entity>> entities = new HashMap<TexturedModel,List<Entity>>(); // Store entities with reference to their model
 	private List<Terrain> terrains = new ArrayList<Terrain>(); // Store list of terrains to be rendered
-	
-	private List<AnimatedEntity> animatedEntities = new ArrayList<>();
 
 	public AdvancedRenderer(Loader loader, Camera camera)
 	{
@@ -64,7 +54,6 @@ public class AdvancedRenderer {
 		createProjectionMatrix();
 		renderer = new EntityRenderer(entityShader,stencilShader,projectionMatrix);
 		terrainRenderer = new TerrainRenderer(terrainShader, projectionMatrix);
-		animRenderer = new AnimationRenderer(animShader, projectionMatrix);
 		skyboxRenderer = new SkyboxRenderer(loader, projectionMatrix);
 		this.shadowRenderer = new ShadowRenderer(camera);
 	}
@@ -80,7 +69,7 @@ public class AdvancedRenderer {
 		GL11.glDisable(GL11.GL_CULL_FACE);
 	}
 	
-	public void renderScene(List<Entity> entities, List<Terrain> terrains, List<AnimatedEntity> animEntities, List<Light> lights, Camera camera, Vector4f clipPlane)
+	public void renderScene(List<Entity> entities, List<Terrain> terrains, List<Light> lights, Camera camera, Vector4f clipPlane)
 	{
 		for(Terrain terrain: terrains)
 		{
@@ -90,11 +79,6 @@ public class AdvancedRenderer {
 		for(Entity entity: entities)
 		{
 			processEntity(entity);
-		}
-		
-		for(AnimatedEntity animEntity: animEntities)
-		{
-			processAnimatedEntity(animEntity);
 		}
 		
 		render(lights, camera,clipPlane);
@@ -129,23 +113,13 @@ public class AdvancedRenderer {
 		terrainRenderer.render(terrains,shadowRenderer.getToShadowMapSpaceMatrix());
 		terrainShader.stop();
 		skyboxRenderer.render(camera, RED, GREEN, BLUE);
-		animShader.start();
-		animShader.loadViewMatrix(camera);
-		//animRenderer.render(animatedEntities.get(0));
-		animShader.stop();
 		terrains.clear();
 		entities.clear();
-		animatedEntities.clear();
 	}
 	
 	public void processTerrain(Terrain terrain)
 	{
 		terrains.add(terrain);
-	}
-	
-	public void processAnimatedEntity(AnimatedEntity animEntity)
-	{
-		animatedEntities.add(animEntity);
 	}
 	
 	

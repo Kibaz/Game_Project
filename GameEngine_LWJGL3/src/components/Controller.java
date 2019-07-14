@@ -1,13 +1,20 @@
 package components;
 
 import org.lwjgl.glfw.GLFW;
+
+import inputs.Input;
 import inputs.KeyboardHandler;
+import networking.Client;
+import rendering.Window;
 
 public class Controller extends Component{
 	
-	public Controller(String name)
+	private Client client; // Required to send inputs
+	
+	public Controller(String name, Client client)
 	{
 		super(name);
+		this.client = client;
 		init();
 	}
 
@@ -43,44 +50,31 @@ public class Controller extends Component{
 		/* Check whether a key has been pressed */
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_W))
 		{
-			motion.setCurrentSpeed(motion.getRunSpeed());
+			Input input = new Input("w key pressed",Window.getFrameTime());
+			client.processInput(input);
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_S))
 		{
-			motion.setCurrentSpeed(-motion.getWalkSpeed());
-		}
-		
-		else
-		{
-			motion.setCurrentSpeed(0);
+			Input input = new Input("s key pressed",Window.getFrameTime());
+			client.processInput(input);
 		}
 		
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_D))
 		{
-			motion.setCurrentTurnSpeed(-Motion.getTurnSpeed());
+			Input input = new Input("d key pressed",Window.getFrameTime());
+			client.processInput(input);
 		}
 		
 		else if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_A))
 		{
-			motion.setCurrentTurnSpeed(Motion.getTurnSpeed());
-		}
-		else
-		{
-			motion.setCurrentTurnSpeed(0);
+			Input input = new Input("a key pressed",Window.getFrameTime());
+			client.processInput(input);
 		}
 		
 		if(KeyboardHandler.isKeyDown(GLFW.GLFW_KEY_SPACE)){
-			jump(motion);
-		}
-	}
-	
-	private void jump(Motion motion)
-	{
-		if(!motion.isAirborne())
-		{
-			motion.setJumpSpeed(Motion.getUpForce());
-			motion.setAirborne(true);
+			Input input = new Input("space key pressed",Window.getFrameTime());
+			client.processInput(input);
 		}
 	}
 
