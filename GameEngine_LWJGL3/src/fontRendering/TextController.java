@@ -4,7 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import org.lwjgl.util.vector.Matrix4f;
+
+import entities.Camera;
 import fontUtils.FontStyle;
 import fontUtils.GUIText;
 import fontUtils.TextMeshData;
@@ -15,17 +19,40 @@ public class TextController {
 	private static Loader loader;
 	private static Map<FontStyle, List<GUIText>> texts = new HashMap<>();
 	
+	private static List<GUIText> removeQueue = new ArrayList<>();
+	
 	private static FontRenderer renderer;
 	
-	public static void init(Loader theLoader)
+	public static void init(Loader theLoader,Matrix4f projectionMatrix)
 	{
-		renderer = new FontRenderer();
+		renderer = new FontRenderer(projectionMatrix);
 		loader = theLoader;
 	}
 	
-	public static void render()
+	public static void render(Camera camera)
 	{
-		renderer.render(texts);
+		renderer.render(texts,camera);
+	}
+	
+	public static void updateTexts()
+	{
+		for(Entry<FontStyle,List<GUIText>> entry: texts.entrySet())
+		{
+			List<GUIText> relTexts = entry.getValue();
+			for(GUIText text: relTexts)
+			{
+				if(text.isFloating())
+				{
+					text.animate();
+				}
+			}
+		}
+		
+		// Remove any texts in the removal queue
+		for(GUIText text: removeQueue)
+		{
+			TextController.removeText(text);
+		}
 	}
 	
 	public static void loadText(GUIText text)
@@ -64,6 +91,11 @@ public class TextController {
 	public static void cleanUp()
 	{
 		renderer.cleanUp();
+	}
+	
+	public static void addToRemovalQueue(GUIText text)
+	{
+		removeQueue.add(text);
 	}
 
 }

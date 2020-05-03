@@ -23,9 +23,9 @@ public class Maths {
 		Matrix4f matrix = new Matrix4f();
 		matrix.setIdentity();
 		Matrix4f.translate(translate, matrix, matrix);
-		Matrix4f.rotate((float) Math.toRadians(rz), new Vector3f(0,0,1), matrix, matrix);
-		Matrix4f.rotate((float) Math.toRadians(ry), new Vector3f(0,1,0), matrix, matrix);
 		Matrix4f.rotate((float) Math.toRadians(rx), new Vector3f(1,0,0), matrix, matrix);
+		Matrix4f.rotate((float) Math.toRadians(ry), new Vector3f(0,1,0), matrix, matrix);
+		Matrix4f.rotate((float) Math.toRadians(rz), new Vector3f(0,0,1), matrix, matrix);
 		Matrix4f.scale(new Vector3f(scale,scale,scale), matrix, matrix);
 		return matrix;
 	}
@@ -37,6 +37,28 @@ public class Maths {
 		Matrix4f.translate(translation, matrix, matrix);
 		Matrix4f.scale(new Vector3f(scale.x, scale.y,1f), matrix, matrix);
 		return matrix;
+	}
+	
+	/*
+	 * Use: for displaying 2D GUIs & Text in 3D Space
+	 */
+	public static Matrix4f createModelViewMatrix(Vector3f position, float rotation, Vector3f scale, Matrix4f viewMatrix)
+	{
+		Matrix4f transformationMatrix = new Matrix4f();
+		Matrix4f.translate(position, transformationMatrix, transformationMatrix);
+		transformationMatrix.m00 = viewMatrix.m00;
+		transformationMatrix.m01 = viewMatrix.m10;
+		transformationMatrix.m02 = viewMatrix.m20;
+		transformationMatrix.m10 = viewMatrix.m01;
+		transformationMatrix.m11 = viewMatrix.m11;
+		transformationMatrix.m12 = viewMatrix.m21;
+		transformationMatrix.m20 = viewMatrix.m02;
+		transformationMatrix.m21 = viewMatrix.m12;
+		transformationMatrix.m22 = viewMatrix.m22;
+		Matrix4f.rotate((float) Math.toRadians(rotation), new Vector3f(0,0,1), transformationMatrix, transformationMatrix);
+		Matrix4f.scale(scale, transformationMatrix, transformationMatrix);
+		Matrix4f modelViewMatrix = Matrix4f.mul(viewMatrix, transformationMatrix, null);
+		return modelViewMatrix;
 	}
 	
 	public static Matrix4f createViewMatrix(Camera camera)
@@ -251,7 +273,7 @@ public class Maths {
 		Matrix4f.rotate((float) Math.toRadians(rotation.z), new Vector3f(0,0,1), matrix, matrix);
 		Matrix4f.rotate((float) Math.toRadians(rotation.y), new Vector3f(0,1,0), matrix, matrix);
 		Matrix4f.rotate((float) Math.toRadians(rotation.x), new Vector3f(1,0,0), matrix, matrix);
-		Vector4f tempVector = new Vector4f(vector.x, vector.y, vector.x, 1.0f);
+		Vector4f tempVector = new Vector4f(vector.x, vector.y, vector.z, 1.0f);
 		Matrix4f.transform(matrix, tempVector, tempVector);
 		return new Vector3f(tempVector.x,tempVector.y,tempVector.z);
 	}
@@ -300,4 +322,10 @@ public class Maths {
 		
 		return (float) (Math.toDegrees(Math.atan2(vector.x, vector.y)));
 	}
+	
+	/*
+	 * Ray cast calculations
+	 */
+	
+	
 }

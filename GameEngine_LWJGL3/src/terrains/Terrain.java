@@ -213,5 +213,18 @@ public class Terrain {
 		
 		return false;
 	}
+	
+	public boolean isPointOnTerrain(Vector3f point)
+	{
+		if(point.x >= this.getX() && 
+				point.z >= this.getZ() && 
+				point.x <= this.x + SIZE &&
+				point.z <= this.z + SIZE)
+		{
+			return true;
+		}
+		
+		return false;
+	}
 
 }

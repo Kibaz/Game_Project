@@ -7,8 +7,10 @@ import entities.Entity;
 import models.BaseModel;
 
 public class AABB {
-
+	
 	// Axis Aligned Bounding Box Class
+	
+	private static final float BOX_OFFSET = 0.5f;
 	
 	private Vector3f minPoint, maxPoint, centre, rotation;
 	private float minX, minY, minZ, maxX, maxY, maxZ, width, height, zWidth;
@@ -23,21 +25,21 @@ public class AABB {
 	public AABB(Entity entity, Vector3f pos)
 	{
 		this.entity = entity;
-		this.minPoint = entity.getModel().getBaseModel().findMinVertex();
-		this.maxPoint = entity.getModel().getBaseModel().findMaxVertex();
-		this.width = entity.getModel().getBaseModel().getModelWidth();
-		this.height = entity.getModel().getBaseModel().getModelHeight();
-		this.zWidth = entity.getModel().getBaseModel().getModelZWidth();
+		this.minPoint = entity.findMinVertex();
+		this.maxPoint = entity.findMaxVertex();
+		this.width = entity.getModelWidth();
+		this.height = entity.getModelHeight();
+		this.zWidth = entity.getModelZWidth();
 		float scale = entity.getScale();
-		this.minX = (minPoint.x * scale + pos.x);
-		this.minY = (minPoint.y * scale + pos.y);
-		this.minZ = (minPoint.z * scale + pos.z);
-		this.maxX = (maxPoint.x * scale + pos.x);
-		this.maxY = (maxPoint.y * scale + pos.y);
-		this.maxZ = (maxPoint.z * scale + pos.z);
+		this.minX = (minPoint.x * scale + pos.x - BOX_OFFSET);
+		this.minY = (minPoint.y * scale + pos.y - BOX_OFFSET) ;
+		this.minZ = (minPoint.z * scale + pos.z - BOX_OFFSET) ;
+		this.maxX = (maxPoint.x * scale + pos.x + BOX_OFFSET) ;
+		this.maxY = (maxPoint.y * scale + pos.y + BOX_OFFSET) ;
+		this.maxZ = (maxPoint.z * scale + pos.z + BOX_OFFSET) ;
 		this.minPoint = new Vector3f(minX,minY,minZ);
 		this.maxPoint = new Vector3f(maxX,maxY,maxZ);
-		this.centre = entity.getModel().getBaseModel().calculateCentre();
+		this.centre = entity.calculateCentre();
 		float centreX = centre.x + pos.x;
 		float centreY = centre.y + pos.y;
 		float centreZ = centre.z + pos.z;
@@ -139,13 +141,12 @@ public class AABB {
 	
 	public void resetBox(Vector3f position)
 	{
-		BaseModel model = this.entity.getModel().getBaseModel();
 		Matrix4f rotMatrix = new Matrix4f();
 		Matrix4f.rotate((float) Math.toRadians(rotation.z), new Vector3f(0,0,1), rotMatrix, rotMatrix);
 		Matrix4f.rotate((float) Math.toRadians(rotation.y), new Vector3f(0,1,0), rotMatrix, rotMatrix);
 		Matrix4f.rotate((float) Math.toRadians(rotation.x), new Vector3f(1,0,0), rotMatrix, rotMatrix);
-		this.minPoint = model.findMinVertex();
-		this.maxPoint = model.findMaxVertex();
+		this.minPoint = entity.findMinVertex();
+		this.maxPoint = entity.findMaxVertex();
 		Vector4f tempMin = Matrix4f.transform(rotMatrix, new Vector4f(minPoint.x,minPoint.y,minPoint.z,1.0f), null);
 		Vector4f tempMax = Matrix4f.transform(rotMatrix, new Vector4f(maxPoint.x,maxPoint.y,maxPoint.z,1.0f), null);
 		this.minPoint = new Vector3f(tempMin.x,tempMin.y,tempMin.z);
@@ -195,10 +196,10 @@ public class AABB {
 		minPoints[2].setValue(minPoint.z);
 	}
 	
-	public void setY(BaseModel model, Vector3f pos)
+	public void setY(Vector3f pos)
 	{
-		this.minPoint.y = model.findMinVertex().y + pos.y; 
-		this.maxPoint.y = model.findMaxVertex().y + pos.y;
+		this.minPoint.y = this.entity.findMinVertex().y + pos.y; 
+		this.maxPoint.y = this.entity.findMaxVertex().y + pos.y;
 	}
 
 	public EndPoint[] getMax() {
@@ -217,7 +218,7 @@ public class AABB {
 	public boolean isEqual(AABB other)
 	{
 		BaseModel thisModel = this.entity.getModel().getBaseModel();
-		BaseModel otherModel = this.entity.getModel().getBaseModel();
+		BaseModel otherModel = other.getEntity().getModel().getBaseModel();
 		if(thisModel.getVaoID() == otherModel.getVaoID() && checkEqualCentre(other.centre))
 		{
 			return true;

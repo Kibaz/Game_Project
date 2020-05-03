@@ -44,7 +44,7 @@ public class Utils {
 	}
 	
 	// Points 1,2 and 3 are given in e-space (ellipsoid space)
-	public static void checkTriangle(CollisionTest colTest, Vector3f p1, Vector3f p2, Vector3f p3)
+	public static void checkTriangle(CollisionTest colTest, Vector3f p1, Vector3f p2, Vector3f p3, Triangle triangle)
 	{
 		// Create plane using triangle points
 		Plane triPlane = new Plane(p1,p2,p3);
@@ -280,6 +280,7 @@ public class Utils {
 					colTest.nearestDistance = distToColl;
 					colTest.intersectionPoint = collPoint;
 					colTest.foundCollision = true;
+					colTest.collidedTriangle = triangle;
 				}
 			}
 		}

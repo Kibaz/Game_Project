@@ -16,6 +16,10 @@ public class BaseModel {
 	
 	private boolean animationData;
 	
+	private int[] indexPositions;
+	
+	private String name;
+	
 	public BaseModel(int ID, int vertCount, float[] vertices, int[] indices)
 	{
 		this.vaoID = ID;
@@ -58,11 +62,27 @@ public class BaseModel {
 		this.vertices = verts;
 	}
 
+	public int[] getIndexPositions() {
+		return indexPositions;
+	}
+
+	public void setIndexPositions(int[] indexPositions) {
+		this.indexPositions = indexPositions;
+	}
+
 	public int[] getIndices()
 	{
 		return indices;
 	}
 	
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
 	public Vector3f findMinVertex()
 	{
 		Vector3f minVert = null;

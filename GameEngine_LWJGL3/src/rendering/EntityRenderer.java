@@ -9,10 +9,12 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
-
+import animation.Bone;
 import components.AnimationComponent;
 import components.EntityInformation;
 import entities.Entity;
+import equip.EquipInventory;
+import equip.EquipItem;
 import models.BaseModel;
 import models.TexturedModel;
 import shaders.EntityShader;
@@ -33,9 +35,13 @@ public class EntityRenderer {
 		shader.start();
 		shader.loadProjectionMatrix(projectionMatrix);
 		shader.stop();
-		stencilShader.start();
-		stencilShader.loadProjectionMatrix(projectionMatrix);
-		stencilShader.stop();
+		if(stencilShader != null)
+		{
+			stencilShader.start();
+			stencilShader.loadProjectionMatrix(projectionMatrix);
+			stencilShader.stop();
+		}
+
 	}
 	
 	public void render(Map<TexturedModel,List<Entity>> entities)
@@ -54,29 +60,7 @@ public class EntityRenderer {
 		GL11.glClear(GL11.GL_STENCIL_BUFFER_BIT);
 		
 		shader.start();
-		for(TexturedModel model:entities.keySet())
-		{			
-			prepareTexturedModel(model);
-			List<Entity> batch = entities.get(model);
-			for(Entity entity:batch)
-			{
-				
-				prepareEntity(entity);
-				AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
-				if(animationComponent != null)
-				{
-					shader.loadAnimationComponent(true);
-					shader.loadJointTransforms(animationComponent.getJointTransforms());
-				}
-				else
-				{
-					shader.loadAnimationComponent(false);
-				}
-				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
-			}
-			unbindTexturedModel();
-			
-		}
+		renderEntityPass(entities);
 		shader.stop();
 		GL11.glColorMask(true, true, true, true);
 		GL11.glDepthMask(true);
@@ -86,16 +70,94 @@ public class EntityRenderer {
 		GL11.glStencilFunc(GL11.GL_EQUAL, 0, 0xFF);
 		
 		stencilShader.start();
+		renderStencilPass(entities);
+		stencilShader.stop();
+		
+		GL11.glDisable(GL11.GL_STENCIL_TEST);
+		shader.start();
+		renderEntityPass(entities);
+		shader.stop();
+	}
+	
+	private void renderEntityPass(Map<TexturedModel,List<Entity>> entities)
+	{
 		for(TexturedModel model:entities.keySet())
+		{			
+			prepareTexturedModel(model);
+			List<Entity> batch = entities.get(model);
+			for(Entity entity: batch)
+			{	
+				renderEntity(entity,model);
+			}
+			unbindTexturedModel();
+			
+		}
+	}
+	
+	private void renderEntity(Entity entity, TexturedModel model) {
+		boolean render = true;
+		if(entity.hasComponent(EquipItem.class))
+		{
+			EquipItem item = entity.getComponentByType(EquipItem.class);
+			Entity parent = item.getParent();
+			if(parent != null)
+			{
+				// Render item at location of parent and attachment point
+				AnimationComponent parentAnim = parent.getComponentByType(AnimationComponent.class);
+				Bone bone = parentAnim.findBone(item.getAttachPoint());
+				Matrix4f parentTransform = Maths.createTransformationMatrix(parent.getPosition(), 
+						parent.getRotX(),parent.getRotY(),parent.getRotZ(), parent.getScale());
+				Matrix4f boneWorldMatrix = Matrix4f.mul(parentTransform, bone.getFinalTransform(), null);
+				shader.loadTransformationMatrix(boneWorldMatrix);
+			}
+			else
+			{
+				render = false;
+			}
+		}
+		else
+		{
+			prepareEntity(entity);
+		}
+		AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+		if(animationComponent != null)
+		{
+			shader.loadAnimationComponent(true);
+			shader.loadJointTransforms(animationComponent.getJointTransforms());
+		}
+		else
+		{
+			shader.loadAnimationComponent(false);
+		}
+		
+		if(render)
+		{
+			GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(),GL11.GL_UNSIGNED_INT,0);
+		}
+		
+	}
+	
+	public void renderSingleEntity(Entity entity)
+	{
+		shader.start();
+		prepareTexturedModel(entity.getModel());
+		renderEntity(entity,entity.getModel());
+		shader.stop();
+	}
+	
+	private void renderStencilPass(Map<TexturedModel,List<Entity>> entities)
+	{
+		for(TexturedModel model: entities.keySet())
 		{			
 			prepareTexturedModelForStencil(model);
 			List<Entity> batch = entities.get(model);
-			for(Entity entity:batch)
+			for(Entity entity: batch)
 			{
 				if(entity.isHovered())
 				{
 					prepareEntityForStencil(entity,0.025f);
 					AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+					
 					if(animationComponent != null)
 					{
 						stencilShader.loadAnimationComponent(true);
@@ -110,42 +172,14 @@ public class EntityRenderer {
 					{
 						stencilShader.loadHostility(info.isHostile());
 					}
+					
 					GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 				}
-				
-				
+
 			}
 			unbindTexturedModel();
-			
+
 		}
-		stencilShader.stop();
-		
-		GL11.glDisable(GL11.GL_STENCIL_TEST);
-		
-		shader.start();
-		for(TexturedModel model:entities.keySet())
-		{			
-			prepareTexturedModel(model);
-			List<Entity> batch = entities.get(model);
-			for(Entity entity:batch)
-			{
-				prepareEntity(entity);
-				AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
-				if(animationComponent != null)
-				{
-					shader.loadAnimationComponent(true);
-					shader.loadJointTransforms(animationComponent.getJointTransforms());
-				}
-				else
-				{
-					shader.loadAnimationComponent(false);
-				}
-				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
-			}
-			unbindTexturedModel();
-			
-		}
-		shader.stop();
 	}
 	
 	private void prepareTexturedModel(TexturedModel model)

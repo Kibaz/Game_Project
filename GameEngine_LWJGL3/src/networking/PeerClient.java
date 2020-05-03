@@ -19,51 +19,49 @@ public class PeerClient {
 	private float prevRotX, prevRotY, prevRotZ;
 	private float nextRotX, nextRotY, nextRotZ;
 	
+	private long prevTimeStamp;
+	private long nextTimeStamp;
+	
 	public PeerClient(UUID id, Entity entity)
 	{
 		this.id = id;
 		this.entity = entity;
+		this.previousPosition = new Vector3f(0,0,0);
+		this.nextPosition = new Vector3f(0,0,0);
 	}
 	
 	public void update()
 	{
-		interpolatePosition();
-		interpolateRotation();
+		float timeDelta = ((nextTimeStamp - prevTimeStamp) / 1000f) + 1/8f;
+		interpolatePosition(timeDelta);
+		interpolateRotation(timeDelta);
 	}
 	
-	public void interpolatePosition()
+	private void interpolatePosition(float time)
 	{
-		if(previousPosition == null || nextPosition == null)
-		{
-			return;
-		}
-		
 		Vector3f diffPos = Vector3f.sub(nextPosition, previousPosition, null);
-		float velX = diffPos.x / (1/8f);
-		float velY = diffPos.y / (1/8f);
-		float velZ = diffPos.z / (1/8f);
+		float velX = diffPos.x / time;
+		float velY = diffPos.y / time;
+		float velZ = diffPos.z / time;
 		
 		float dx = velX * Window.getFrameTime();
 		float dy = velY * Window.getFrameTime();
 		float dz = velZ * Window.getFrameTime();
 		
-		entity.increasePosition(dx, dy, dz);
+		entity.increasePosition(dx,dy,dz);
 	}
 	
-	public void interpolateRotation()
+	private void interpolateRotation(float time)
 	{
-		float diffX = nextRotX - prevRotX;
-		float diffY = nextRotY - prevRotY;
-		float diffZ = nextRotZ - prevRotZ;
+		float diffX = nextRotX - entity.getRotX();
+		float diffY = nextRotY - entity.getRotY();
+		float diffZ = nextRotZ - entity.getRotZ();
 		
-		float rx = (diffX / (1/8f)) * Window.getFrameTime();
-		float ry = (diffY / (1/8f)) * Window.getFrameTime();
-		float rz = (diffZ / (1/8f)) * Window.getFrameTime();
+		float rx = (diffX / time) * Window.getFrameTime();
+		float ry = (diffY / time) * Window.getFrameTime();
+		float rz = (diffZ / time) * Window.getFrameTime();
 		
-		entity.increaseRotation(rx, ry, rz);
-		prevRotX = entity.getRotX();
-		prevRotY = entity.getRotY();
-		prevRotZ = entity.getRotZ();
+		entity.increaseRotation(rx,ry,rz);
 	}
 	
 	public UUID getID() {
@@ -145,6 +143,24 @@ public class PeerClient {
 	public void setNextRotZ(float nextRotZ) {
 		this.nextRotZ = nextRotZ;
 	}
+
+	public long getPrevTimeStamp() {
+		return prevTimeStamp;
+	}
+
+	public void setPrevTimeStamp(long prevTimeStamp) {
+		this.prevTimeStamp = prevTimeStamp;
+	}
+
+	public long getNextTimeStamp() {
+		return nextTimeStamp;
+	}
+
+	public void setNextTimeStamp(long nextTimeStamp) {
+		this.nextTimeStamp = nextTimeStamp;
+	}
+	
+	
 	
 	
 	

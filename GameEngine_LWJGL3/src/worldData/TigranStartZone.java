@@ -13,6 +13,7 @@ import terrains.Terrain;
 import texturing.CausticTexture;
 import texturing.ModelTexture;
 import utils.OBJLoader;
+import utils.StaticModelLoader;
 import water.WaterPlane;
 
 public class TigranStartZone extends Zone{
@@ -49,6 +50,9 @@ public class TigranStartZone extends Zone{
 		box = OBJLoader.loadObj("cube", loader);
 		fern = OBJLoader.loadObj("fern", loader);
 		
+		
+		BaseModel slope = OBJLoader.loadObj("slope", loader);
+		
 		// Load Textures
 		ModelTexture treeTex = new ModelTexture(loader.loadTexture("res/green.png"));
 		ModelTexture fernTex = new ModelTexture(loader.loadTexture("res/fern.png"));
@@ -60,6 +64,7 @@ public class TigranStartZone extends Zone{
 		TexturedModel treeTexModel = new TexturedModel(tree,treeTex);
 		TexturedModel fernTexModel = new TexturedModel(fern, fernTex);
 		TexturedModel boxTexModel = new TexturedModel(box,treeTex);
+		TexturedModel slopeTextModel = new TexturedModel(slope,treeTex);
 		
 		// Create Entities
 		Entity treeEnt = new Entity(treeTexModel, new Vector3f(90, super.getTerrains().get(0).getTerrainHeight(90, 70), 70), 0, 0, 0, 1);
@@ -68,6 +73,8 @@ public class TigranStartZone extends Zone{
 		Entity boxEnt = new Entity(boxTexModel,new Vector3f(200, super.getTerrains().get(0).getTerrainHeight(200, 200),200),0,0,0,18);
 		boxEnt.setStaticModel(true);
 		
+		Entity slopeEnt = new Entity(slopeTextModel,new Vector3f(250,super.getTerrains().get(0).getTerrainHeight(250, 210),210),0,0,0,1);
+		slopeEnt.setStaticModel(true);
 		
 		Random random = new Random();
 		for(int i = 0; i < 400; i++)
@@ -82,8 +89,10 @@ public class TigranStartZone extends Zone{
 		
 		super.getEntities().add(treeEnt);
 		super.getEntities().add(boxEnt);
+		super.getEntities().add(slopeEnt);
 		World.addEntity(treeEnt);
 		World.addEntity(boxEnt);
+		World.addEntity(slopeEnt);
 		
 	}
 

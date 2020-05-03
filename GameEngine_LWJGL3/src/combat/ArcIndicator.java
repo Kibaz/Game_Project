@@ -3,11 +3,14 @@ package combat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
+import org.lwjgl.util.vector.Vector4f;
 
 import entities.Entity;
 import rendering.Loader;
+import terrains.Terrain;
 import utils.Maths;
 import utils.Utils;
 
@@ -27,44 +30,123 @@ public class ArcIndicator extends DamageIndicator{
 	}
 
 	@Override
-	public void buildIndicator(Loader loader) {
+	public void buildIndicator(Loader loader,List<Terrain> terrains) {
+		// Update vertices according to current position
+		
 		List<Float> vertexList = new ArrayList<>();
 		
-		float theta = arcAngle / (float) (segments - 1);
+		// Create transformation matrix from position and rotation
+		Matrix4f transformationMatrix = Maths.createTransformationMatrix(this.getPosition(), 0, this.getRotY(), 0, 1);
 		
-		float tagentialFactor = (float) Math.tan(Math.toRadians(theta));
 		
-		float radialFactor = (float) Math.cos(Math.toRadians(theta));
-		
-		float x = (float) (radius * Math.cos(Math.toRadians(startAngle)));
-		float y = (float) (radius * Math.sin(Math.toRadians(startAngle)));
-		
-		vertexList.add(0.5f);
-		vertexList.add(0.5f);
+		// Build vertices with no "y" value
+		vertexList.add(0f);
+		vertexList.add(0f);
 		vertexList.add(0f);
 		
-		for(int i = 0; i < segments; i++)
+		float increment = (float) (Math.toRadians(arcAngle) / segments);
+		float endAngle = (float) Math.toRadians(startAngle + arcAngle);
+		for(float angle = (float) Math.toRadians(startAngle); angle <= endAngle; angle+= increment)
 		{
-			float tx = -y;
-			float ty = x;
-			
-			x += tx * tagentialFactor;
-			y += ty * tagentialFactor;
-			
-			x *= radialFactor;
-			y *= radialFactor;
+			float x = (float)(radius * Math.cos(angle));
+			float z = (float)(radius * Math.sin(angle));
 			vertexList.add(x);
-			vertexList.add(y);
 			vertexList.add(0f);
+			vertexList.add(z);
 		}
 		
-		vertexList.add(0.5f);
-		vertexList.add(0.5f);
 		vertexList.add(0f);
+		vertexList.add(0f);
+		vertexList.add(0f);
+		
+		// Update 'y' values
+		for(int i = 0; i < vertexList.size(); i+=3)
+		{
+			Vector4f vertex = new Vector4f(vertexList.get(i),vertexList.get(i+1),vertexList.get(i+2),1f);
+			Vector4f transformedVertex = Matrix4f.transform(transformationMatrix, vertex, null);
+			
+			Terrain t = findTerrain(terrains,transformedVertex.x,transformedVertex.z);
+			if(t != null)
+			{
+				transformedVertex.y = t.getTerrainHeight(transformedVertex.x, transformedVertex.z);
+			}
+			Vector4f result = Matrix4f.transform(Matrix4f.invert(transformationMatrix, null), transformedVertex, null);
+			vertexList.set(i+1,result.y);
+		}
+
 		
 		super.vertices = Utils.floatListToArray(vertexList);
 		
 		super.model = loader.loadToVAO(super.vertices, 3);
+		
+		int vbo = loader.getVbos().get(loader.getVbos().size()-1);
+		super.setVertexBufferID(vbo);
+	}
+	
+	private Terrain findTerrain(List<Terrain> terrains,float x,float z)
+	{
+		for(Terrain terrain: terrains)
+		{
+			if(terrain.isPointOnTerrain(new Vector3f(x,0,z)))
+			{
+				return terrain;
+			}
+		}
+		
+		return null;
+	}
+	
+	@Override
+	public void updateIndicator(Loader loader,List<Terrain> terrains) {
+		// Update vertices according to current position
+		
+		List<Float> vertexList = new ArrayList<>();
+		
+		// Create transformation matrix from position and rotation
+		Matrix4f transformationMatrix = Maths.createTransformationMatrix(this.getPosition(), 0, this.getRotY(), 0, 1);
+		
+		
+		// Build vertices with no "y" value
+		vertexList.add(0f);
+		vertexList.add(0f);
+		vertexList.add(0f);
+		
+		float increment = (float) (Math.toRadians(arcAngle) / segments);
+		float endAngle = (float) Math.toRadians(startAngle + arcAngle);
+		for(float angle = (float) Math.toRadians(startAngle); angle <= endAngle; angle+= increment)
+		{
+			float x = (float)(radius * Math.cos(angle));
+			float z = (float)(radius * Math.sin(angle));
+			vertexList.add(x);
+			vertexList.add(0f);
+			vertexList.add(z);
+		}
+		
+		vertexList.add(0f);
+		vertexList.add(0f);
+		vertexList.add(0f);
+		
+		// Update 'y' values
+		for(int i = 0; i < vertexList.size(); i+=3)
+		{
+			Vector4f vertex = new Vector4f(vertexList.get(i),vertexList.get(i+1),vertexList.get(i+2),1f);
+			Vector4f transformedVertex = Matrix4f.transform(transformationMatrix, vertex, null);
+			Terrain t = findTerrain(terrains,transformedVertex.x,transformedVertex.z);
+			if(t != null)
+			{
+				transformedVertex.y = t.getTerrainHeight(transformedVertex.x, transformedVertex.z);
+			}
+			Vector4f result = Matrix4f.transform(Matrix4f.invert(transformationMatrix, null), transformedVertex, null);
+			vertexList.set(i+1,result.y);
+		}
+
+		
+		super.vertices = Utils.floatListToArray(vertexList);
+		
+		super.model.setVertices(super.vertices);
+		
+		loader.updateVBO(this.vertexBufferID, vertices);
+		
 	}
 
 	@Override

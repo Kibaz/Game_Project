@@ -3,6 +3,7 @@ package fontUtils;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
+import entities.Entity;
 import fontRendering.TextController;
 
 public class GUIText {
@@ -15,12 +16,19 @@ public class GUIText {
 	private Vector3f colour = new Vector3f(0,0,0);
 	
 	private Vector2f position; // Relative to the position on the screen as opposed to the 3D world
+	private Vector3f worldPosition; // Relative to the world
 	private float maxLineSize;
 	private int numLines;
 	
 	private FontStyle font;
 	
 	private boolean centered = false;
+	
+	private boolean isFloating = false;
+	
+	private float opacity;
+	
+	private Entity assocEntity;
 	
 	public GUIText(String text, float fontSize, FontStyle font, Vector2f position, float maxLineSize, boolean centered)
 	{
@@ -30,7 +38,22 @@ public class GUIText {
 		this.position = position;
 		this.maxLineSize = maxLineSize;
 		this.centered = centered;
+		this.opacity = 1;
 		// load text
+		TextController.loadText(this);
+	}
+	
+	// For creating text which will float within world space (3D Space)
+	public GUIText(String text, float fontSize, FontStyle font, Vector3f worldPosition,float maxLineSize,boolean centered)
+	{
+		this.content = text;
+		this.fontSize = fontSize;
+		this.font = font;
+		this.maxLineSize = maxLineSize;
+		this.worldPosition = worldPosition;
+		this.centered = centered;
+		this.isFloating = true;
+		this.opacity = 1;
 		TextController.loadText(this);
 	}
 	
@@ -38,6 +61,22 @@ public class GUIText {
 	{
 		// remove text
 		TextController.removeText(this);
+	}
+	
+	public void animate()
+	{
+		this.opacity -= 0.015;
+		if(assocEntity != null)
+		{
+			this.worldPosition = new Vector3f(assocEntity.getPosition().x,
+					this.getWorldPosition().y + 0.1f,assocEntity.getPosition().z);
+		}
+		
+		if(this.opacity < 0)
+		{
+			// Mark this text to be removed
+			TextController.addToRemovalQueue(this);
+		}
 	}
 	
 	public FontStyle getFont()
@@ -107,6 +146,48 @@ public class GUIText {
 	public void setContent(String content) {
 		this.content = content;
 	}
+
+	public boolean isFloating() {
+		return isFloating;
+	}
+
+	public void setFloating(boolean isFloating) {
+		this.isFloating = isFloating;
+	}
+
+	public Vector3f getWorldPosition() {
+		return worldPosition;
+	}
+
+	public void setWorldPosition(Vector3f worldPosition) {
+		this.worldPosition = worldPosition;
+	}
+
+	public float getOpacity() {
+		return opacity;
+	}
+
+	public void setOpacity(float opacity) {
+		this.opacity = opacity;
+	}
+
+	public Entity getAssocEntity() {
+		return assocEntity;
+	}
+
+	public void setAssocEntity(Entity assocEntity) {
+		this.assocEntity = assocEntity;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	

@@ -32,7 +32,7 @@ public class EntityShader extends ShaderProgram{
 	private int location_plane;
 	private int location_jointTransforms[];
 	private int location_hasAnimation;
-
+	
 	public EntityShader() {
 		super(VERTEX_PATH,FRAGMENT_PATH);
 	}

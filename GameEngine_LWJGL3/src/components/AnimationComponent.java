@@ -1,6 +1,7 @@
 package components;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.lwjgl.util.vector.Matrix4f;
@@ -10,6 +11,9 @@ import org.lwjgl.util.vector.Vector3f;
 import animation.Animation;
 import animation.Bone;
 import animation.Node;
+import animation.PositionTransform;
+import animation.RotationTransform;
+import animation.ScaleTransform;
 import rendering.Window;
 import utils.Maths;
 
@@ -19,7 +23,7 @@ public class AnimationComponent extends Component{
 	
 	private Matrix4f globalTransformationMatrix;
 	
-	private Matrix4f jointTransforms[];
+	private Matrix4f[] jointTransforms;
 	private Bone[] bones;
 	
 	private Map<String,Animation> animations;
@@ -60,11 +64,12 @@ public class AnimationComponent extends Component{
 	private void calculateJointTransforms()
 	{
 		Matrix4f identity = new Matrix4f();
-		
 		float ticksPerSecond = (float) (currentAnimation.getTicksPerSecond() != 0 ? currentAnimation.getTicksPerSecond() : 25.0f);
 		float timeInTicks = time * ticksPerSecond;
+		if(timeInTicks > currentAnimation.getDuration()) {
+			time = 0;
+		}
 		float animationTime = (timeInTicks % (float) currentAnimation.getDuration());
-		
 		readNodeHierarchy(animationTime,currentAnimation.getRootNode(),identity);
 		
 		for(short i = 0; i < bones.length; i++) 
@@ -80,18 +85,21 @@ public class AnimationComponent extends Component{
 	{
 		Matrix4f nodeTransform = node.getTransformation();
 		if(node != null && node.isAnimationNode())
-		{
+		{	
 			Vector3f position = calculateInterpolatedPosition(animationTime,node);
-			Matrix4f translation = new Matrix4f().translate(position);
+			Matrix4f translation = new Matrix4f();
+			Matrix4f.translate(position, translation, translation);
 			
 			Quaternion rotation = calculateInterpolatedRotation(animationTime,node);
 			Matrix4f rotationMatrix = Maths.quatToMatrix4f(rotation);
-			rotationMatrix.transpose(); // This is required for ASSIMP for some fucking reason...!
+			rotationMatrix.transpose();
 			
 			Vector3f scale = calculateInterpolatedScaling(animationTime,node);
-			Matrix4f scaleMatrix = new Matrix4f().scale(scale);
+			Matrix4f scaleMatrix = new Matrix4f();
+			Matrix4f.scale(scale, scaleMatrix, scaleMatrix);
 			
-			nodeTransform = Matrix4f.mul(Matrix4f.mul(translation, rotationMatrix, null), scaleMatrix, null);
+			nodeTransform = Matrix4f.mul(rotationMatrix, scaleMatrix,null);
+			nodeTransform = Matrix4f.mul(translation, nodeTransform, null);
 			
 		}
 		
@@ -116,29 +124,27 @@ public class AnimationComponent extends Component{
 	{
 		Vector3f interpolatedPosition = new Vector3f(0,0,0);
 		
-		if(node.getPositions().size() == 1)
+		List<PositionTransform> positions = node.getPositions().get(currentAnimation.getName());
+		
+		if(positions.size() == 1)
 		{
-			return node.getPositions().get(0).getPosition();
+			return positions.get(0).getPosition();
 		}
 		
 		int index = findPosition(animationTime,node);
 		int nextIndex = index + 1;
-		if(nextIndex < node.getPositions().size())
-		{
-			float deltaTime = (float) (node.getPositions().get(nextIndex).getTime() - node.getPositions().get(index).getTime());
-			float factor = (animationTime - (float) node.getPositions().get(index).getTime()) / deltaTime;
-			if(factor >= 0.0f && factor <= 1.0f)
-			{
-				Vector3f start = node.getPositions().get(index).getPosition();
-				Vector3f end = node.getPositions().get(nextIndex).getPosition();
-				Vector3f delta = new Vector3f();
-				Vector3f.sub(end, start, delta);
+		assert(nextIndex < node.getPositions().size());
+		float deltaTime = (float) (node.getPositions().get(currentAnimation.getName()).get(nextIndex).getTime() - positions.get(index).getTime());
+		float factor = (animationTime - (float) positions.get(index).getTime()) / deltaTime;
+		assert(factor >= 0.0f && factor <= 1.0f);
+		Vector3f start = positions.get(index).getPosition();
+		Vector3f end = positions.get(nextIndex).getPosition();
+		Vector3f delta = new Vector3f();
+		Vector3f.sub(end, start, delta);
 				
-				Vector3f deltaFactor = new Vector3f(delta.x * factor, delta.y * factor, delta.z * factor);
+		Vector3f deltaFactor = new Vector3f(delta.x * factor, delta.y * factor, delta.z * factor);
 				
-				Vector3f.add(start, deltaFactor, interpolatedPosition);
-			}
-		}
+		Vector3f.add(start, deltaFactor, interpolatedPosition);
 		
 		return interpolatedPosition;
 	}
@@ -147,62 +153,57 @@ public class AnimationComponent extends Component{
 	{
 		Quaternion interpolatedRotation = new Quaternion(0,0,0,0);
 		
-		if(node.getRotations().size() == 1)
+		List<RotationTransform> rotations = node.getRotations().get(currentAnimation.getName());
+		
+		if(rotations.size() == 1)
 		{
-			return node.getRotations().get(0).getRotation();
+			return rotations.get(0).getRotation();
 		}
 		
 		int index = findRotation(animationTime,node);
 		int nextIndex = index + 1;
-		if(nextIndex < node.getRotations().size())
-		{
-			float deltaTime = (float) (node.getRotations().get(nextIndex).getTime() - node.getRotations().get(index).getTime());
-			float factor = (animationTime - (float) node.getRotations().get(index).getTime()) / deltaTime;
-			if(factor >= 0.0f && factor <= 1.0f)
-			{
-				Quaternion start = node.getRotations().get(index).getRotation();
-				Quaternion end = node.getRotations().get(nextIndex).getRotation();
-				interpolatedRotation = Maths.slerp(start,end,factor);
-			}
-		}
+		assert(nextIndex < node.getRotations().size());
+		float deltaTime = (float) (rotations.get(nextIndex).getTime() - rotations.get(index).getTime());
+		float factor = (animationTime - (float) rotations.get(index).getTime()) / deltaTime;
+		assert(factor >= 0.0f && factor <= 1.0f);
+		Quaternion start = rotations.get(index).getRotation();
+		Quaternion end = rotations.get(nextIndex).getRotation();
+		interpolatedRotation = Maths.slerp(start,end,factor);
 		return interpolatedRotation;
 	}
 	
 	private Vector3f calculateInterpolatedScaling(float animationTime, Node node)
 	{
-		Vector3f interpolatedScaling = new Vector3f(1,1,1);
+		List<ScaleTransform> scalings = node.getScalings().get(currentAnimation.getName());
 		
-		if(node.getScalings().size() == 1)
+		if(scalings.size() == 1)
 		{
-			return node.getScalings().get(0).getScale();
+			return scalings.get(0).getScale();
 		}
 		
 		int index = findScale(animationTime,node);
 		int nextIndex = index + 1;
-		if(nextIndex < node.getScalings().size())
-		{
-			float deltaTime = (float) (node.getScalings().get(nextIndex).getTime() - node.getScalings().get(index).getTime());
-			float factor = (animationTime - (float) node.getScalings().get(index).getTime()) / deltaTime;
-			if(factor >= 0.0f && factor <= 1.0f)
-			{
-				Vector3f start = node.getScalings().get(index).getScale();
-				Vector3f end = node.getScalings().get(nextIndex).getScale();
-				Vector3f delta = Vector3f.sub(end, start, null);
-				Vector3f deltaFactor = new Vector3f(delta.x * factor, delta.y * factor, delta.z * factor);
-				interpolatedScaling = Vector3f.add(start,deltaFactor ,null);
-			}
-		}
-		
-		return interpolatedScaling;
+		assert(nextIndex < node.getScalings().size());
+		float deltaTime = (float) (scalings.get(nextIndex).getTime() - scalings.get(index).getTime());
+		float factor = (animationTime - (float) scalings.get(index).getTime()) / deltaTime;
+		assert(factor >= 0.0f && factor <= 1.0f);			
+		Vector3f start = scalings.get(index).getScale();
+		Vector3f end = scalings.get(nextIndex).getScale();
+		Vector3f delta = Vector3f.sub(end, start, null);
+		Vector3f deltaFactor = new Vector3f(delta.x * factor, delta.y * factor, delta.z * factor);
+		return Vector3f.add(start,deltaFactor ,null);
+
 	}
 	
 	private int findRotation(float animationTime, Node node)
 	{
-		assert(node.getRotations().size() > 0);
+		List<RotationTransform> rotations = node.getRotations().get(currentAnimation.getName());
 		
-		for(int i = 0; i < node.getRotations().size() - 1; i++)
+		assert(rotations.size() > 0);
+		
+		for(int i = 0; i < rotations.size() - 1; i++)
 		{
-			if(animationTime < (float) node.getRotations().get(i+1).getTime())
+			if(animationTime < (float) rotations.get(i+1).getTime())
 			{
 				return i;
 			}
@@ -213,9 +214,11 @@ public class AnimationComponent extends Component{
 	
 	private int findPosition(float animationTime, Node node)
 	{
-		for(int i = 0; i < node.getPositions().size() - 1; i++)
+		List<PositionTransform> positions = node.getPositions().get(currentAnimation.getName());
+		
+		for(int i = 0; i < positions.size() - 1; i++)
 		{
-			if(animationTime < (float) node.getPositions().get(i+1).getTime())
+			if(animationTime < (float) positions.get(i+1).getTime())
 			{
 				return i;
 			}
@@ -226,11 +229,13 @@ public class AnimationComponent extends Component{
 	
 	private int findScale(float animationTime, Node node)
 	{
-		assert(node.getScalings().size() > 0);
+		List<ScaleTransform> scalings = node.getScalings().get(currentAnimation.getName());
 		
-		for(int i = 0; i < node.getScalings().size() - 1; i++)
+		assert(scalings.size() > 0);
+		
+		for(int i = 0; i < scalings.size() - 1; i++)
 		{
-			if(animationTime < (float) node.getScalings().get(i+1).getTime())
+			if(animationTime < (float) scalings.get(i+1).getTime())
 			{
 				return i;
 			}
@@ -239,7 +244,7 @@ public class AnimationComponent extends Component{
 		return 0;
 	}
 	
-	private Bone findBone(String boneName)
+	public Bone findBone(String boneName)
 	{
 		for(Bone bone: bones) if (bone.getBoneName().equals(boneName)) return bone;
 		

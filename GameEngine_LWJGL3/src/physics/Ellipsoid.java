@@ -11,18 +11,14 @@ public class Ellipsoid {
 	
 	private Vector3f rotation;
 	
-	// Transformed Model information
-	private float[] vertices;
-	
 	public Ellipsoid(Entity entity)
 	{
 		this.entity = entity;
-		this.centre = this.entity.getModel().getBaseModel().calculateCentre();
-		float xRadius = this.entity.getModel().getBaseModel().getModelWidth() / 2;
-		float yRadius = this.entity.getModel().getBaseModel().getModelHeight() / 2;
-		float zRadius = (this.entity.getModel().getBaseModel().getModelZWidth())/ 2;
+		this.centre = this.entity.calculateCentre();
+		float xRadius = this.entity.getModelWidth() / 2;
+		float yRadius = this.entity.getModelHeight() / 2;
+		float zRadius = this.entity.getModelZWidth() / 2;
 		this.radius = new Vector3f(xRadius, yRadius, zRadius);
-		this.vertices = this.entity.getModel().getBaseModel().getVertices();
 		this.rotation = new Vector3f(0,0,0);
 	}
 	
@@ -57,72 +53,12 @@ public class Ellipsoid {
 		Vector3f.add(centre, position, centre);
 	}
 	
-	private Vector3f findMinVertex()
-	{
-		Vector3f minVert = null;
-		float xMin = vertices[0];
-		float yMin = vertices[1];
-		float zMin = vertices[2];
-		int vertCounter = 0;
-		for(int i = 0; i < vertices.length/3; i++)
-		{
-			if(vertices[vertCounter] < xMin)
-			{
-				xMin = vertices[vertCounter];
-			}
-			vertCounter++;
-			if(vertices[vertCounter] < yMin)
-			{
-				yMin = vertices[vertCounter];
-				
-			}
-			vertCounter++;
-			if(vertices[vertCounter] < zMin)
-			{
-				zMin = vertices[vertCounter];
-				
-			}
-			vertCounter++;
-		}
-		minVert = Maths.rotate3DVector(new Vector3f(xMin, yMin, zMin), rotation);
-		
-		return minVert;
-	}
-	
-	private Vector3f findMaxVertex()
-	{
-		Vector3f maxVert = null;
-		float xMax = vertices[0];
-		float yMax = vertices[1];
-		float zMax = vertices[2];
-		int vertCounter = 0;
-		for(int i = 0; i < vertices.length/3; i++)
-		{
-			if(vertices[vertCounter] > xMax)
-			{
-				xMax = vertices[vertCounter];
-			}
-			vertCounter++;
-			if(vertices[vertCounter] > yMax)
-			{
-				yMax = vertices[vertCounter];
-			}
-			vertCounter++;
-			if(vertices[vertCounter] > zMax)
-			{
-				zMax = vertices[vertCounter];
-			}
-			vertCounter++;
-		}
-		maxVert = Maths.rotate3DVector(new Vector3f(xMax, yMax, zMax), rotation);
-		
-		return maxVert;
-	}
-	
 	private void calculateEllipsoid()
 	{
-		Vector3f minVert = findMinVertex();
-		Vector3f maxVert = findMaxVertex();
+		Vector3f minVert = entity.findMinVertex();
+		Vector3f maxVert = entity.findMaxVertex();
+		minVert = Maths.rotate3DVector(minVert, rotation);
+		maxVert = Maths.rotate3DVector(maxVert, rotation);
 		float maxX = maxVert.x > minVert.x ? maxVert.x : minVert.x;
 		float maxY = maxVert.y > minVert.y ? maxVert.y : minVert.y;
 		float maxZ = maxVert.z > minVert.z ? maxVert.z : minVert.z;

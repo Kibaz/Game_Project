@@ -2,9 +2,13 @@ package combat;
 
 import java.util.Random;
 
+import org.lwjgl.util.vector.Vector3f;
+
 import components.CombatManager;
 import components.EntityInformation;
 import entities.Entity;
+import fontUtils.GUIText;
+import runtime.Main;
 
 public class InstantDamage extends Effect {
 
@@ -44,8 +48,13 @@ public class InstantDamage extends Effect {
 		
 		int damage = damageCalculator.nextInt(maxDamage - minDamage + 1) + minDamage;
 		
+		// Modify damage using entity's info
+		float totalDamage = damage * ((float) damage / (damage + info.getArmour()));
+		damage = (int) Math.ceil(totalDamage);
+		
 		info.setHealth(info.getHealth() - damage);
 		
+		this.generateCombatText(entity, damage);
 		this.ended = true;
 		
 	}

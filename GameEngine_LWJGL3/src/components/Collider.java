@@ -199,7 +199,7 @@ public class Collider extends Component{
 					p2 = new Vector3f(p2.x/collTest.eRadius.x, p2.y/collTest.eRadius.y, p2.z/collTest.eRadius.z);
 					Vector3f p3 = collider.getTriangles()[j].getPoints()[2];
 					p3 = new Vector3f(p3.x/collTest.eRadius.x, p3.y/collTest.eRadius.y, p3.z/collTest.eRadius.z);
-					Utils.checkTriangle(collTest, p1, p2, p3);
+					Utils.checkTriangle(collTest, p1, p2, p3,collider.getTriangles()[j]);
 				}
 			}
 		}

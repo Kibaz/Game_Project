@@ -7,7 +7,9 @@ import org.lwjgl.util.vector.Vector3f;
 
 import entities.Entity;
 import guis.GUI;
+import rendering.Loader;
 import rendering.Window;
+import terrains.Terrain;
 
 public class Ability{
 	
@@ -48,6 +50,11 @@ public class Ability{
 		this.effect = effect;
 	}
 	
+	public boolean inRange(Entity entity)
+	{
+		return this.damageIndicator.intersectsEntity(entity);
+	}
+	
 	public void doEffect(List<Entity> entities)
 	{
 		if(onCooldown) // Exit if on cool-down
@@ -77,7 +84,7 @@ public class Ability{
 	}
 	
 	
-	public void update()
+	public void update(Loader loader, List<Terrain> terrains)
 	{
 		if(!onCooldown)
 		{
@@ -90,6 +97,8 @@ public class Ability{
 			cooldownElapse = cooldown;
 			onCooldown = false;
 		}
+		
+		this.damageIndicator.updateIndicator(loader,terrains);
 	}
 	
 	public void setIndicatorPosition(Vector3f position)

@@ -22,14 +22,26 @@ public class Camera {
 	private float zoom = 20;
 	
 	
-	public Camera(Entity player)
+	public Camera(Entity player,boolean defaultCam)
 	{
 		this.player = player;
+		if(defaultCam)
+		{
+			GLFW.glfwSetScrollCallback(Window.getWindowID(), new GLFWScrollCallback() {
+
+				@Override
+				public void invoke(long window, double xOffset, double yOffset) {
+					float zoomLevel = 0;
+					zoomLevel = (float) (yOffset * 5f);
+					distFromPlayer -= zoomLevel;
+				}
+				
+			});
+		}
 	}
 	
 	public void move()
 	{
-		calcZoom();
 		calcPitch();
 		calcOrbit();
 		float horizontalDist = calcHorizontalDist();
@@ -42,10 +54,20 @@ public class Camera {
 	{
 		return this.position;
 	}
+	
+	public void setPosition(Vector3f position)
+	{
+		this.position = position;
+	}
 
 	public float getPitch() 
 	{
 		return pitch;
+	}
+	
+	public void setPitch(float pitch)
+	{
+		this.pitch = pitch;
 	}
 
 	public float getYaw() {
@@ -71,22 +93,6 @@ public class Camera {
 	private float calcVerticalDist()
 	{
 		return (float) (distFromPlayer * Math.sin(Math.toRadians(pitch)));
-	}
-	
-	private void calcZoom() 
-	{
-		GLFW.glfwSetScrollCallback(Window.getWindowID(), new GLFWScrollCallback() {
-
-			@Override
-			public void invoke(long window, double xOffset, double yOffset) {
-				float zoomLevel = 0;
-				zoomLevel = (float) (yOffset * 5f);
-				distFromPlayer -= zoomLevel;
-			}
-			
-		});
-		
-		
 	}
 	
 	private void calcPitch()

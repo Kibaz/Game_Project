@@ -16,7 +16,7 @@ import rendering.Loader;
 
 public class StaticModelLoader {
 	
-	public static BaseModel[] load(String filepath, Loader loader) throws Exception
+	public static BaseModel[] load(String filepath, Loader loader)
 	{
 		AIScene scene = Assimp.aiImportFile(filepath, Assimp.aiProcess_Triangulate | 
 				Assimp.aiProcess_GenSmoothNormals |
@@ -25,7 +25,7 @@ public class StaticModelLoader {
 		
 		if(scene == null)
 		{
-			throw new Exception("Assimp Error: Error loading scene!");
+			throw new RuntimeException("Assimp Error: Error loading scene!");
 		}
 		
 		int numMeshes = scene.mNumMeshes();

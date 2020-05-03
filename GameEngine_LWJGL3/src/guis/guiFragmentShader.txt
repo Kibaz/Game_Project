@@ -6,10 +6,22 @@ out vec4 out_Colour;
 
 uniform sampler2D guiTexture;
 uniform float hovered;
+uniform float fbo;
 
 void main(void)
 {
-	vec4 colour = texture(guiTexture, textureCoords);
+
+	vec4 colour = vec4(0,0,0,0);
+
+	if(fbo > 0.5)
+	{
+		colour = texture(guiTexture, vec2(textureCoords.x,1.0-textureCoords.y));
+	}
+	else
+	{
+		colour = texture(guiTexture, textureCoords);
+	}
+	
 	
 	if(hovered == 1.0)
 	{

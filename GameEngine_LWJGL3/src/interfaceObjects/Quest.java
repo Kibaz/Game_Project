@@ -34,7 +34,6 @@ public class Quest {
 	{
 		EntityInformation info = entity.getComponentByType(EntityInformation.class);
 		float difficultyFactor = (float) levelRequirement / (float) info.getLevel();
-		System.out.println(difficultyFactor);
 		float weightingFactor = 0.2f * info.getExperienceCap();
 		experience = (difficultyFactor * weightingFactor) + expBonus;
 	}

@@ -29,9 +29,9 @@ public class FloatingHealthBar extends Component {
 		{
 			// Update position of HUDs based on entity
 			healthPool.setPosition(new Vector3f(entity.getPosition().x,entity.getPosition().y + 
-					entity.getModel().getBaseModel().getModelZWidth() + 1, entity.getPosition().z));
+					entity.getModelZWidth() + 1, entity.getPosition().z));
 			healthFrame.setPosition(new Vector3f(entity.getPosition().x,entity.getPosition().y + 
-					entity.getModel().getBaseModel().getModelZWidth() + 1, entity.getPosition().z));
+					entity.getModelZWidth() + 1, entity.getPosition().z));
 			
 			EntityInformation info = entity.getComponentByType(EntityInformation.class);
 			if(info != null)

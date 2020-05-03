@@ -70,6 +70,57 @@ public class Loader {
 			
 			width = w.get();
 			height = h.get();
+
+			
+		}
+		
+		GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, image);
+		
+		GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+		
+		GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		
+		return tID;
+	}
+	
+	public int loadTexture(String file,boolean flip)
+	{	
+		ByteBuffer image;
+		int width, height;
+		
+		int tID = GL11.glGenTextures();
+		GL11.glBindTexture(GL11.GL_TEXTURE_2D, tID);
+		
+		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+		
+		if(GL.getCapabilities().GL_EXT_texture_filter_anisotropic)
+		{
+			float amount = Math.min(4f, GL11.glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT));
+			GL11.glTexParameterf(GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, amount);
+		}
+		else
+		{
+			System.out.println("Anisotropic Filtering Not Supported!");
+		}
+		
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			IntBuffer w = stack.mallocInt(1);
+			IntBuffer h = stack.mallocInt(1);
+			IntBuffer comp = stack.mallocInt(1);
+			
+			STBImage.stbi_set_flip_vertically_on_load(flip);
+			image = STBImage.stbi_load(file, w, h, comp, 4);
+			if(image == null)
+			{
+				throw new RuntimeException("Failed to load a texture file!"
+						+ System.lineSeparator() + STBImage.stbi_failure_reason());
+			}
+			
+			width = w.get();
+			height = h.get();
+
 			
 		}
 		
@@ -325,6 +376,14 @@ public class Loader {
 		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 	}
 	
+	public void updateVBO(int vbo, float[] vertices)
+	{
+		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+		FloatBuffer buffer = storeDataInFloatBuffer(vertices);
+		GL15.glBufferData(GL15.GL_ARRAY_BUFFER,buffer,GL15.GL_STATIC_DRAW);
+		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+	}
+	
 	private void storeDataInAttributeList(int attribNum, int coordSize, float[] data) {
 		int vboID = GL15.glGenBuffers();
 		vbos.add(vboID);
@@ -375,6 +434,12 @@ public class Loader {
 		buffer.flip();
 		return buffer;
 	}
+
+	public List<Integer> getVbos() {
+		return vbos;
+	}
+	
+	
 	
 	
 	

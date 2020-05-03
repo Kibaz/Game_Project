@@ -23,6 +23,7 @@ public class Motion extends Component {
 	private boolean airborne;
 	
 	private Vector3f currentVelocity;
+	private Vector3f gravityVector;
 	
 	public Motion()
 	{
@@ -39,6 +40,7 @@ public class Motion extends Component {
 		currentSpeed = 0;
 		currentTurnSpeed = 0;
 		currentVelocity = new Vector3f(0,0,0);
+		gravityVector = new Vector3f(0,0,0);
 		airborne = false;
 	}
 
@@ -71,9 +73,9 @@ public class Motion extends Component {
 		}
 	}
 	
-	public void applyGravity()
+	public void applyGravity(float time)
 	{
-		jumpSpeed += GRAVITY * Window.getFrameTime();
+		jumpSpeed += GRAVITY * time;
 	}
 
 	public float getRunSpeed() {
@@ -153,6 +155,16 @@ public class Motion extends Component {
 	public static float getUpForce() {
 		return UP_FORCE;
 	}
+
+	public Vector3f getGravityVector() {
+		return gravityVector;
+	}
+
+	public void setGravityVector(Vector3f gravityVector) {
+		this.gravityVector = gravityVector;
+	}
+	
+	
 	
 	
 	

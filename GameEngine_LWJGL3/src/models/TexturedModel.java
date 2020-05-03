@@ -4,17 +4,17 @@ import texturing.ModelTexture;
 
 public class TexturedModel {
 
-	private BaseModel baseModel;
+	private BaseModel model;
 	private ModelTexture texture;
 	
 	public TexturedModel(BaseModel model, ModelTexture texture)
 	{
-		this.baseModel = model;
+		this.model = model;
 		this.texture = texture;
 	}
 
 	public BaseModel getBaseModel() {
-		return baseModel;
+		return model;
 	}
 
 	public ModelTexture getTexture() {

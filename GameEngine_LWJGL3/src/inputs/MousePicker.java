@@ -156,7 +156,7 @@ public class MousePicker {
 		{
 			for(Ability ability: abilities)
 			{
-				if(ability.getGui().isHovered())
+				if(ability.getGui() != null && ability.getGui().isHovered())
 				{
 					ability.doEffect(entities);
 					clickedWhiteSpace = false;

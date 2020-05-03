@@ -1,7 +1,12 @@
 package combat;
 
+import org.lwjgl.util.vector.Vector3f;
+
 import components.CombatManager;
+import components.EntityInformation;
 import entities.Entity;
+import fontUtils.GUIText;
+import runtime.Main;
 
 public abstract class Effect {
 	
@@ -28,6 +33,24 @@ public abstract class Effect {
 	protected abstract Effect clone();
 	
 	public abstract void execute(Entity entity);
+	
+	protected void generateCombatText(Entity assocEntity, int damage)
+	{
+		Vector3f combatTextPos = new Vector3f(assocEntity.getPosition().x,assocEntity.getPosition().y +
+				assocEntity.getModelHeight(), assocEntity.getPosition().z);
+		GUIText floatingCombatText = new GUIText(String.valueOf(damage),3f,Main.testFontStyle,combatTextPos,1,true);
+		EntityInformation info = assocEntity.getComponentByType(EntityInformation.class);
+		if(info != null && info.isHostile())
+		{
+			floatingCombatText.setColour(1f, 0.84f, 0f);
+		}
+		else
+		{
+			floatingCombatText.setColour(1f, 0f, 0f);
+		}
+		
+		floatingCombatText.setAssocEntity(assocEntity);
+	}
 	
 	public boolean hasEnded()
 	{

@@ -8,6 +8,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
 
 import entities.Camera;
+import rendering.AdvancedRenderer;
 import utils.Maths;
 
 public class IndicatorRenderer {
@@ -25,19 +26,24 @@ public class IndicatorRenderer {
 	public void render(DamageIndicator indicator, Camera camera)
 	{
 		GL11.glDisable(GL11.GL_DEPTH_TEST);
+		AdvancedRenderer.disableCulling();
 		shader.start();
 		shader.loadViewMatrix(Maths.createViewMatrix(camera));
 		prepareIndicator(indicator);
-		shader.loadModelMatrix(Maths.createTransformationMatrix(indicator.getPosition(), 0, indicator.getRotY(), 0, 1));
-		GL11.glDrawArrays(GL11.GL_LINE_STRIP, 0, indicator.getModel().getVertCount());
+		shader.loadModelMatrix(Maths.createTransformationMatrix(indicator.getPosition(), 
+			0, indicator.getRotY(), 0, 1));
+		shader.loadEnemyIndicator(indicator.isEnemyIndicator());
+		GL11.glDrawArrays(GL11.GL_TRIANGLE_FAN, 0, indicator.getModel().getVertCount());
 		unbindIndicator();
 		shader.stop();
+		AdvancedRenderer.enableCulling();
 		GL11.glEnable(GL11.GL_DEPTH_TEST);
 	}
 	
 	public void prepareIndicator(DamageIndicator indicator)
 	{
 		GL30.glBindVertexArray(indicator.getModel().getVaoID());
+		
 		GL20.glEnableVertexAttribArray(0);
 	}
 	

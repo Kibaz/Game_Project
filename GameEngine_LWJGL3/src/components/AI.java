@@ -17,9 +17,11 @@ import utils.Maths;
 public class AI extends Component {
 	
 	private static final float TURN_SPEED = 160;
-	private static final float RUN_SPEED = 15;
+	private static final float RUN_SPEED = 23;
 	private static final float WALK_SPEED = 10;
 	private static final float GRAVITY = -50;
+	private static final float DIST_FROM_PLAYER = 10.0f;
+	private static final float WP_ACCURACY = 0.25f;
 	
 	private float steerForce;
 	private float currentSpeed;
@@ -27,7 +29,6 @@ public class AI extends Component {
 	private float upSpeed;
 	
 	private float aggroRange;
-	private float slowingRadius;
 	private float wanderRadius;
 	private float avoidanceForce;
 	
@@ -52,13 +53,17 @@ public class AI extends Component {
 		ATTACK,
 		WANDER,
 		RETREAT,
-		DEAD
+		DEAD,
+		CHASE,
+		ATTACKING,
 	}
 	
 	private State state;
 	
 	private float idleTime;
 	private float idleTimeLimit;
+
+	private Ability currAbility;
 	
 	public AI(String name, List<Entity> entities, List<Terrain> terrains, List<Entity> enemies, Map<String,Ability> abilities)
 	{
@@ -78,6 +83,7 @@ public class AI extends Component {
 		acceleration = new Vector2f(0,0);
 		state = State.WANDER;
 		randomiser = new Random();
+		currentSpeed = WALK_SPEED;
 	}
 
 	@Override
@@ -93,45 +99,45 @@ public class AI extends Component {
 	@Override
 	public void update() {
 		if(entity != null)
-		{
-			verifyAction();
-			
-			move();
-			
-			EntityInformation info = entity.getComponentByType(EntityInformation.class);
-			if(info != null)
+		{	
+			if(entity != null)
 			{
-				if(info.getHealth() <= 0)
+				verifyAction();
+				
+				EntityInformation info = entity.getComponentByType(EntityInformation.class);
+				if(info != null)
 				{
-					state = State.DEAD;
-				}
-			}
-			
-			// Update ability damage indicators
-			for(String abilityName: abilities.keySet())
-			{
-				abilities.get(abilityName).getDamageIndicator().setPosition(entity.getPosition());
-				abilities.get(abilityName).getDamageIndicator().setRotY(entity.getRotY());
-				abilities.get(abilityName).update();
-			}
-			
-			if(targetToAttack != null)
-			{
-				CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
-				if(combatManager != null)
-				{
-					combatManager.setInCombat(true);
+					if(info.getHealth() <= 0)
+					{
+						state = State.DEAD;
+					}
 				}
 				
-				if(state == State.DEAD)
+				// Update ability damage indicators
+				for(String abilityName: abilities.keySet())
 				{
-					// Grant experience to target
-					EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
-					float experienceGain = (info.getLevel() / (float) targetInfo.getLevel()) * (0.1f * targetInfo.getExperienceCap());
-					targetInfo.setExperience(targetInfo.getExperience() + (int) experienceGain);
-					combatManager.setInCombat(false);
-					targetToAttack = null;
-					QuestTracker.notifyTracker(info);
+					abilities.get(abilityName).getDamageIndicator().setPosition(entity.getPosition());
+					abilities.get(abilityName).getDamageIndicator().setRotY(entity.getRotY());
+				}
+				
+				if(targetToAttack != null)
+				{
+					CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
+					if(combatManager != null)
+					{
+						combatManager.setInCombat(true);
+					}
+					
+					if(state == State.DEAD)
+					{
+						// Grant experience to target
+						EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
+						float experienceGain = (info.getLevel() / (float) targetInfo.getLevel()) * (0.1f * targetInfo.getExperienceCap());
+						targetInfo.setExperience(targetInfo.getExperience() + (int) experienceGain);
+						combatManager.setInCombat(false);
+						targetToAttack = null;
+						QuestTracker.notifyTracker(info);
+					}
 				}
 			}
 		}
@@ -139,13 +145,15 @@ public class AI extends Component {
 	
 	private void verifyAction()
 	{
-		// If mob is in attack mode - seek the enemy
-		if(state == State.ATTACK)
+		// If mob is in chase mode - seek the enemy
+		if(state == State.CHASE)
 		{
 			target = new Vector2f(targetToAttack.getPosition().x,targetToAttack.getPosition().z);
 			currentSpeed = RUN_SPEED;
 			alertToEnemies();
-			attack();
+			if(targetToAttack != null && Maths.distance(entity.getPosition(), targetToAttack.getPosition()) <= DIST_FROM_PLAYER){
+				state = State.ATTACK;
+			}
 			
 			// Set entity in combat
 			CombatManager combatManager = entity.getComponentByType(CombatManager.class);
@@ -155,6 +163,23 @@ public class AI extends Component {
 			}
 			
 			// Play running animation
+			playAnimation("run");
+			move();
+		}
+		else if(state == State.ATTACK)
+		{
+			checkTargetDead();
+			
+			if(Maths.distance(entity.getPosition(), targetToAttack.getPosition()) > DIST_FROM_PLAYER)
+			{
+				// Wait for the attack animation to complete
+				if(entity.getComponentByType(AnimationComponent.class).getTime() == 0)
+				{
+					state = State.CHASE;
+				}
+			}
+			playAnimation("attack");
+			attack();
 		}
 		else if(state == State.WANDER)
 		{
@@ -163,12 +188,16 @@ public class AI extends Component {
 			// Maybe giving it a job to do
 			currentSpeed = WALK_SPEED;
 			target = wander();
+			// Play walk animation
+			playAnimation("walk");
 			alertToEnemies();
+			move();
 		}
 		else if(state == State.IDLE)
 		{
-			currentSpeed = 0;
 			idle();
+			// Play idle animation
+			playAnimation("idle");
 			alertToEnemies();
 		}
 		else if(state == State.RETREAT)
@@ -183,23 +212,31 @@ public class AI extends Component {
 			{
 				combatManager.setInCombat(false);
 			}
+			
+			// Re-play running animation
+			playAnimation("run");
+			move();
 		}
 		else if(state == State.DEAD)
 		{
-			currentSpeed = 0;
 			target = null;
 			// Play death animation initially (when state just changed)
+		}
+		else if(state == State.ATTACKING)
+		{
+			// Do nothing in this state
 		}
 	}
 	
 	private void attack()
-	{
+	{	
 		Ability abilityToUse = null;
 		List<Ability> abilitiesAvailable = new ArrayList<>();
 		for(String abilityName: abilities.keySet())
 		{
 			Ability ability = abilities.get(abilityName);
-			if(!ability.isOnCooldown())
+			
+			if(!ability.isOnCooldown() && targetToAttack != null && ability.inRange(targetToAttack))
 			{
 				abilitiesAvailable.add(ability);
 			}
@@ -216,6 +253,25 @@ public class AI extends Component {
 		{
 			abilityToUse.doEffect(enemies);
 		}
+	}
+	
+	private void playAnimation(String animationName)
+	{
+		AnimationComponent animComponent = entity.getComponentByType(AnimationComponent.class);
+		if(animComponent != null && animComponent.getAnimations().containsKey(animationName))
+		{	
+			animComponent.setCurrentAnimation(animationName);
+		}
+			
+		for(Entity item: entity.getAddedItems())
+		{
+			animComponent = item.getComponentByType(AnimationComponent.class);
+			if(animComponent != null && animComponent.getAnimations().containsKey(animationName))
+			{
+				animComponent.setCurrentAnimation(animationName);
+			}
+		}
+			
 	}
 	
 	private void move()
@@ -235,7 +291,7 @@ public class AI extends Component {
 				if(entity.getPosition().y < terrainHeight)
 				{
 					entity.getPosition().y = terrainHeight;
-					entity.getAABB().setY(entity.getModel().getBaseModel(), entity.getPosition());
+					entity.getAABB().setY(entity.getPosition());
 					entity.getAABB().getCentre().y = entity.getPosition().y + (entity.getAABB().getHeight()/2f);
 				}
 			}
@@ -264,7 +320,7 @@ public class AI extends Component {
 	private void retreat()
 	{
 		float distance = Vector3f.sub(spawnLocation, entity.getPosition(), null).length();
-		if(distance < 0.25f)
+		if(distance < WP_ACCURACY)
 		{
 			state = State.WANDER;
 		}
@@ -290,28 +346,13 @@ public class AI extends Component {
 				{
 					targetToAttack = enemy;
 					
-					EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
-					if(targetInfo != null)
-					{
-						if(targetInfo.getHealth() <= 0)
-						{
-							if(state == State.ATTACK)
-							{
-								state = State.RETREAT;
-							}
-							
-						}
-						else
-						{
-							state = State.ATTACK;
-						}
-					}
+					checkTargetDead();
 				}
 
 			}
 			else
 			{
-				if(state == State.ATTACK)
+				if(state == State.CHASE)
 				{
 					state = State.RETREAT;
 					CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
@@ -325,6 +366,28 @@ public class AI extends Component {
 			}
 		}
 
+	}
+	
+	private void checkTargetDead()
+	{
+		EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
+		if(targetInfo != null)
+		{
+			if(targetInfo.getHealth() <= 0)
+			{
+				if(state == State.CHASE || state == State.ATTACK)
+				{
+					state = State.RETREAT;
+				}
+			}
+			else
+			{
+				if(state != State.CHASE && state != State.ATTACK)
+				{
+					state = State.CHASE;
+				}
+			}
+		}
 	}
 	
 	private Entity findClosestEnemy()
@@ -351,8 +414,6 @@ public class AI extends Component {
 	
 	private void idle()
 	{
-		// Play idle animation
-		
 		idleTime += Window.getFrameTime();
 		if(idleTime > idleTimeLimit)
 		{
@@ -371,29 +432,29 @@ public class AI extends Component {
 		Vector2f desired = Vector2f.sub(target, currPos, null);
 		
 		float angle = Maths.findVectorAngle(desired);
-		float diffAngles = (entity.getRotY() - angle + 180) % 360 - 180;
-		diffAngles = diffAngles < -180 ? diffAngles + 360 : diffAngles;
-
-		if((int) diffAngles > 0)
+		if(state == State.CHASE)
 		{
-			entity.increaseRotation(0, -TURN_SPEED * Window.getFrameTime(), 0);
-		}
-		else if((int) diffAngles < 0)
-		{
-			entity.increaseRotation(0, TURN_SPEED * Window.getFrameTime(), 0);
-		}
-		
-		float maxVel = currentSpeed * Window.getFrameTime();
-		if(desired.length() < slowingRadius && state == State.ATTACK)
-		{
-			desired.normalise();
-			desired = Maths.mulScalar(desired, 0);
+			entity.setRotY(angle);
 		}
 		else
 		{
-			desired.normalise();
-			desired = Maths.mulScalar(desired, maxVel);
+			float diffAngles = (entity.getRotY() - angle + 180) % 360 - 180;
+			diffAngles = diffAngles < -180 ? diffAngles + 360 : diffAngles;
+
+			if((int) diffAngles > 0)
+			{
+				entity.increaseRotation(0, -TURN_SPEED * Window.getFrameTime(), 0);
+			}
+			else if((int) diffAngles < 0)
+			{
+				entity.increaseRotation(0, TURN_SPEED * Window.getFrameTime(), 0);
+			}
 		}
+
+		
+		float maxVel = currentSpeed * Window.getFrameTime();
+		desired.normalise();
+		desired = Maths.mulScalar(desired, maxVel);
 		
 		Vector2f steering = Vector2f.sub(desired, currentVelocity, null);
 		float maxForce = steerForce * Window.getFrameTime();
@@ -407,9 +468,9 @@ public class AI extends Component {
 	
 	private Vector2f wander()
 	{
+		Random random = new Random();
 		if(target == null)
 		{
-			Random random = new Random();
 			int targetPosX = (int) (random.nextInt((int) (wanderRadius + 1 + wanderRadius)) - wanderRadius);
 			int targetPosZ = (int) (random.nextInt((int) (wanderRadius + 1 + wanderRadius)) - wanderRadius);
 			return new Vector2f(spawnLocation.x + targetPosX, spawnLocation.z + targetPosZ);
@@ -418,7 +479,6 @@ public class AI extends Component {
 		{
 			if(Maths.distance(new Vector2f(entity.getPosition().x, entity.getPosition().z), target) < 0.25f)
 			{
-				Random random = new Random();
 				int stateId = random.nextInt(2);
 				if(stateId == 0)
 				{
@@ -493,9 +553,10 @@ public class AI extends Component {
 	public void setWanderRadius(float wanderRadius) {
 		this.wanderRadius = wanderRadius;
 	}
-
-	public void setSlowingRadius(float slowingRadius) {
-		this.slowingRadius = slowingRadius;
+	
+	public void setTarget(Vector2f target)
+	{
+		this.target = target;
 	}
 	
 	

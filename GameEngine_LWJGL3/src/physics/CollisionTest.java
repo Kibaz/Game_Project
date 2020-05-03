@@ -19,5 +19,7 @@ public class CollisionTest {
 	public boolean foundCollision;
 	public double nearestDistance;
 	public Vector3f intersectionPoint;
+	
+	public Triangle collidedTriangle;
 
 }

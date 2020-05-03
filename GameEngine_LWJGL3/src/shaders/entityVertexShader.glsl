@@ -25,8 +25,6 @@ uniform mat4 viewMatrix;
 uniform float hasAnimation;
 uniform vec3 lightPosition[4];
 uniform vec4 plane;
-
-
 uniform mat4 jointTransforms[MAX_JOINTS];
 
 
@@ -55,10 +53,7 @@ void main(void)
 		totalPos = vec4(position,1.0);
 		normalPos = vec4(normal,0.0);
 	}
-
 	
-
-
 	vec4 worldPosition = transformationMatrix * totalPos;
 	
 	gl_ClipDistance[0] = dot(worldPosition, plane);

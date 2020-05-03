@@ -13,9 +13,9 @@ public class Node {
 	
 	private List<Node> children;
 	
-	private List<PositionTransform> positions;
-	private List<RotationTransform> rotations;
-	private List<ScaleTransform> scalings;
+	private Map<String,List<PositionTransform>> positions;
+	private Map<String,List<RotationTransform>> rotations;
+	private Map<String,List<ScaleTransform>> scalings;
 	
 	private String name;
 	
@@ -30,9 +30,9 @@ public class Node {
 		this.name = name;
 		this.parent = parent;
 		this.children = new ArrayList<>();
-		this.positions = new ArrayList<>();
-		this.rotations = new ArrayList<>();
-		this.scalings = new ArrayList<>();
+		this.positions = new HashMap<>();
+		this.rotations = new HashMap<>();
+		this.scalings = new HashMap<>();
 	}
 	
 	public Node findByName(String name)
@@ -74,15 +74,15 @@ public class Node {
 		return parent;
 	}
 
-	public List<PositionTransform> getPositions() {
+	public Map<String,List<PositionTransform>> getPositions() {
 		return positions;
 	}
 
-	public List<RotationTransform> getRotations() {
+	public Map<String,List<RotationTransform>> getRotations() {
 		return rotations;
 	}
 
-	public List<ScaleTransform> getScalings() {
+	public Map<String,List<ScaleTransform>> getScalings() {
 		return scalings;
 	}
 	
@@ -94,19 +94,19 @@ public class Node {
 		this.transformation = transformation;
 	}
 
-	public void addPosition(PositionTransform position)
+	public void addPosition(String animName,PositionTransform position)
 	{
-		positions.add(position);
+		positions.get(animName).add(position);
 	}
 	
-	public void addScale(ScaleTransform scale)
+	public void addScale(String animName, ScaleTransform scale)
 	{
-		scalings.add(scale);
+		scalings.get(animName).add(scale);
 	}
 	
-	public void addRotation(RotationTransform rotation)
+	public void addRotation(String animName,RotationTransform rotation)
 	{
-		rotations.add(rotation);
+		rotations.get(animName).add(rotation);
 	}
 	
 	public void setAnimatedNode(boolean isAnimNode)

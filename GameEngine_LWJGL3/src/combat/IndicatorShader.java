@@ -12,6 +12,7 @@ public class IndicatorShader extends ShaderProgram {
 	private int location_modelMatrix;
 	private int location_viewMatrix;
 	private int location_projectionMatrix;
+	private int location_isEnemy;
 
 	public IndicatorShader() {
 		super(VERTEX_SHADER,FRAGMENT_SHADER);
@@ -28,6 +29,7 @@ public class IndicatorShader extends ShaderProgram {
 		location_modelMatrix = super.getUniformLocation("modelMatrix");
 		location_viewMatrix = super.getUniformLocation("viewMatrix");
 		location_projectionMatrix = super.getUniformLocation("projectionMatrix");
+		location_isEnemy = super.getUniformLocation("isEnemy");
 	}
 	
 	
@@ -44,6 +46,11 @@ public class IndicatorShader extends ShaderProgram {
 	public void loadProjectionMatrix(Matrix4f matrix)
 	{
 		super.loadMatrix(location_projectionMatrix, matrix);
+	}
+	
+	public void loadEnemyIndicator(boolean isEnemy)
+	{
+		super.loadBoolean(location_isEnemy, isEnemy);
 	}
 	
 

@@ -19,7 +19,10 @@ public class GUIRenderer {
 	
 	public GUIRenderer(Loader loader)
 	{
-		float[] positions = { -1, 1, -1, -1, 1, 1, 1, -1 };
+		float[] positions = { -1, 1, 
+							-1, -1, 
+							1, 1, 
+							1, -1 };
 		quad = loader.loadToVAO(positions,2);
 		shader = new GUIShader();
 	}
@@ -41,6 +44,7 @@ public class GUIRenderer {
 				Matrix4f matrix = Maths.createTransformationMatrix(gui.getGUITexture().getPosition(),gui.getGUITexture().getScale());
 				shader.loadHovered(gui.isHovered());
 				shader.loadTransformationMatrix(matrix);
+				shader.loadFBO(gui.isFbo());
 				GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, quad.getVertCount());
 			}
 		}

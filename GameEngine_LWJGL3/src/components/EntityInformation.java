@@ -19,6 +19,12 @@ public class EntityInformation extends Component {
 	
 	private int healthRegeneration = 5;
 	
+	private int armour = 0;
+	
+	private int minDamage = 1; // Lower bound damage - determined by items wielded, default is 1 damage fists
+	
+	private int maxDamage = 2; // Upper bound damage - determined by items wielded, default is 2 damage fists
+	
 	private boolean hostile;
 	
 	public EntityInformation(String title, int level, int health, int maxHealth)
@@ -115,6 +121,11 @@ public class EntityInformation extends Component {
 	public void setHealth(int health) {
 		this.health = health;
 	}
+	
+	public void modifyHealth(int health)
+	{
+		this.health += health;
+	}
 
 	public int getMaxHealth() {
 		return maxHealth;
@@ -122,6 +133,11 @@ public class EntityInformation extends Component {
 
 	public void setMaxHealth(int maxHealth) {
 		this.maxHealth = maxHealth;
+	}
+	
+	public void modifyMaxHealth(int health)
+	{
+		this.maxHealth += health;
 	}
 
 	public int getExperience() {
@@ -152,6 +168,38 @@ public class EntityInformation extends Component {
 	public void setHostile(boolean hostile) {
 		this.hostile = hostile;
 	}
+
+	public int getArmour() {
+		return armour;
+	}
+
+	public void setArmour(int armour) {
+		this.armour = armour;
+	}
+	
+	public void modifyArmour(int armour)
+	{
+		this.armour += armour;
+	}
+
+	public int getMinDamage() {
+		return minDamage;
+	}
+
+	public void setMinDamage(int minDamage) {
+		this.minDamage = minDamage;
+	}
+
+	public int getMaxDamage() {
+		return maxDamage;
+	}
+
+	public void setMaxDamage(int maxDamage) {
+		this.maxDamage = maxDamage;
+	}
+	
+	
+	
 	
 	
 	

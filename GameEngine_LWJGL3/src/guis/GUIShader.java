@@ -11,6 +11,7 @@ public class GUIShader extends ShaderProgram {
 	
 	private int location_transformationMatrix;
 	private int location_hovered;
+	private int location_fbo;
 
 	public GUIShader() {
 		super(VERTEX_PATH, FRAGMENT_PATH);
@@ -27,6 +28,11 @@ public class GUIShader extends ShaderProgram {
 		super.loadBoolean(location_hovered, hovered);
 	}
 	
+	public void loadFBO(boolean fbo)
+	{
+		super.loadBoolean(location_fbo, fbo);
+	}
+	
 	@Override
 	protected void bindAttributes() {
 		super.bindAttribute(0, "position");
@@ -37,6 +43,7 @@ public class GUIShader extends ShaderProgram {
 	protected void getAllUniformLocations() {
 		location_transformationMatrix = super.getUniformLocation("transformationMatrix");
 		location_hovered = super.getUniformLocation("hovered");
+		location_fbo = super.getUniformLocation("fbo");
 		
 	}
 

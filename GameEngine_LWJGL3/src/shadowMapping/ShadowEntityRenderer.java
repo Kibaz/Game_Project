@@ -29,17 +29,16 @@ public class ShadowEntityRenderer {
 	
 	public void render(Map<TexturedModel, List<Entity>> entities)
 	{
-		for(TexturedModel tmodel: entities.keySet())
+		for(TexturedModel model: entities.keySet())
 		{
-			BaseModel model = tmodel.getBaseModel();
-			bindModel(model);
+			bindModel(model.getBaseModel());
 			GL13.glActiveTexture(GL13.GL_TEXTURE0);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, tmodel.getTexture().getTextureID());
-			if(tmodel.getTexture().isHasTransparency())
+			GL11.glBindTexture(GL11.GL_TEXTURE_2D, model.getTexture().getTextureID());
+			if(model.getTexture().isHasTransparency())
 			{
 				AdvancedRenderer.disableCulling();
 			}
-			List<Entity> batch = entities.get(tmodel);
+			List<Entity> batch = entities.get(model);
 			for(Entity entity: batch)
 			{
 				prepareEntity(entity);
@@ -52,15 +51,17 @@ public class ShadowEntityRenderer {
 				else
 				{
 					shader.loadAnimated(false);
-				}
-				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getVertCount(), GL11.GL_UNSIGNED_INT, 0);
+				}	
+
+				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
+				
 			}
-			if(tmodel.getTexture().isHasTransparency())
+			if(model.getTexture().isHasTransparency())
 			{
 				AdvancedRenderer.enableCulling();
 			}
+			unbindModel();
 		}
-		unbindModel();
 	}
 	
 	private void bindModel(BaseModel model)

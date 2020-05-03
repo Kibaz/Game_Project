@@ -1,5 +1,6 @@
 package fontRendering;
 
+import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
@@ -12,6 +13,10 @@ public class FontShader extends ShaderProgram {
 	
 	private int location_colour;
 	private int location_translation;
+	private int location_projectionMatrix;
+	private int location_modelViewMatrix;
+	private int location_isFloating;
+	private int location_opacity;
 	
 	public FontShader() {
 		super(VERTEX_PATH, FRAGMENT_PATH);
@@ -27,6 +32,10 @@ public class FontShader extends ShaderProgram {
 	protected void getAllUniformLocations() {
 		location_colour = super.getUniformLocation("colour");
 		location_translation = super.getUniformLocation("translation");
+		location_modelViewMatrix = super.getUniformLocation("modelViewMatrix");
+		location_projectionMatrix = super.getUniformLocation("projectionMatrix");
+		location_isFloating = super.getUniformLocation("isFloating");
+		location_opacity = super.getUniformLocation("opacity");
 	}
 	
 	public void loadColour(Vector3f colour)
@@ -38,6 +47,28 @@ public class FontShader extends ShaderProgram {
 	{
 		super.load2DVector(location_translation, translation);
 	}
+	
+	public void loadProjectionMatrix(Matrix4f matrix)
+	{
+		super.loadMatrix(location_projectionMatrix, matrix);
+	}
+	
+	public void loadViewModelMatrix(Matrix4f matrix)
+	{
+		super.loadMatrix(location_modelViewMatrix, matrix);
+	}
+	
+	public void loadFloatingText(boolean isFloating)
+	{
+		super.loadBoolean(location_isFloating, isFloating);
+	}
+	
+	public void loadOpacity(float opacity)
+	{
+		super.loadFloat(location_opacity, opacity);
+	}
+	
+	
 	
 	
 

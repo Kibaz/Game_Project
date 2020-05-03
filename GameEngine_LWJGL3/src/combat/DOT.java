@@ -69,6 +69,8 @@ public class DOT extends Effect{
 			int damageOnTick = damageCalculator.nextInt((maxDamagePerTick - minDamagePerTick) + 1) + minDamagePerTick;
 			info.setHealth(info.getHealth() - damageOnTick);
 			
+			this.generateCombatText(entity, damageOnTick);
+			
 			tickCount++; // Increment tick count
 			timeElapsed = 0; // Reset timer
 		}

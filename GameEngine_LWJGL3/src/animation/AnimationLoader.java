@@ -32,7 +32,6 @@ import org.lwjgl.util.vector.Vector4f;
 import components.AnimationComponent;
 import entities.Entity;
 import models.BaseModel;
-import models.Mesh;
 import models.TexturedModel;
 import rendering.Loader;
 import runtime.Main;
@@ -44,12 +43,11 @@ public class AnimationLoader {
 	
 	public static Entity loadAnimatedFile(String filePath, String texturePath, Vector3f position, float rotX, float rotY, float rotZ, float scale, Loader loader) throws RuntimeException
 	{	
-		
 		AIScene scene = Assimp.aiImportFile(filePath, 
 											Assimp.aiProcess_Triangulate |
 											Assimp.aiProcess_GenSmoothNormals |
 											Assimp.aiProcess_LimitBoneWeights |
-											Assimp.aiProcess_FixInfacingNormals |
+											Assimp.aiProcess_CalcTangentSpace |
 											Assimp.aiProcess_JoinIdenticalVertices);
 		
 		if(scene == null || scene.mNumAnimations() == 0)
@@ -76,13 +74,16 @@ public class AnimationLoader {
 		for(int i = 0; i < numMeshes; i++)
 		{
 			AIMesh aiMesh = AIMesh.create(meshBuffer.get(i));
-			BaseModel mesh = processMesh(aiMesh,materials,boneList,loader);
-			meshes[i] = mesh;
+			Mesh mesh = processMesh(aiMesh,materials,boneList,loader);
+			BaseModel model = loader.loadToVAO(mesh.getVertices(), mesh.getUvs(), mesh.getNormals(), 
+					mesh.getIndices(), mesh.getBoneIds(), mesh.getWeights());
+			meshes[i] = model;
 		}
 		
 		Bone[] bones = new Bone[boneList.size()];
 		for(int i = 0; i < boneList.size(); i++)
 		{
+			System.out.println(boneList.get(i).getBoneName());
 			bones[i] = boneList.get(i);
 		}
 		
@@ -94,13 +95,17 @@ public class AnimationLoader {
 		Matrix4f inverseRootTransformation = Utils.convertAssimpToLWJGLMat4(inverseRootTransform);
 		rootNode.setTransformation(inverseRootTransformation); // Required transform for correctly position model
 		ModelTexture texture = new ModelTexture(loader.loadTexture(texturePath));
+		texture.setAmbient(materials.get(0).getAmbient());
+		texture.setDiffuse(materials.get(0).getDiffuseColour());
+		texture.setSpecular(materials.get(0).getSpecularColour());
 		/*
 		 * Create a regular entity using mesh data, 
 		 * texture data and specified position,
 		 * rotation and scale data
 		 */
-		Main.testModel = new TexturedModel(meshes[0],texture);
-		Entity entity = new Entity(Main.testModel,position,rotX,rotY,rotZ,scale);
+		TexturedModel model = new TexturedModel(meshes[0],texture);
+		
+		Entity entity = new Entity(model,position,rotX,rotY,rotZ,scale);
 		// Create an animated component using the processed animation data
 		AnimationComponent animationComponent = new AnimationComponent("animated_component");
 		animationComponent.setBones(bones);
@@ -123,6 +128,7 @@ public class AnimationLoader {
 		for(int i = 0; i < numAnims; i++)
 		{
 			AIAnimation aiAnimation = AIAnimation.create(animations.get(i));
+			String animName = aiAnimation.mName().dataString();
 			
 			int numChannels = aiAnimation.mNumChannels();
 			PointerBuffer channels = aiAnimation.mChannels();
@@ -131,17 +137,17 @@ public class AnimationLoader {
 				AINodeAnim aiNodeAnim = AINodeAnim.create(channels.get(j));
 				Node node = root.findByName(aiNodeAnim.mNodeName().dataString());
 				node.setAnimatedNode(true);
-				readTransformParams(aiNodeAnim,node);
+				readTransformParams(aiNodeAnim,node,animName);
 			}
 			
 			double duration = aiAnimation.mDuration();
 			double ticksPerSecond = aiAnimation.mTicksPerSecond();
-			Animation animation = new Animation(aiAnimation.mName().dataString(),ticksPerSecond,duration,root);
+			Animation animation = new Animation(animName,ticksPerSecond,duration,root);
 			animationComponent.submitAnimation(animation.getName(), animation);
 		}
 	}
 	
-	private static void readTransformParams(AINodeAnim animNode, Node node)
+	private static void readTransformParams(AINodeAnim animNode, Node node, String animName)
 	{
 		AIVectorKey.Buffer positionKeys = animNode.mPositionKeys();
 		AIQuatKey.Buffer rotationKeys = animNode.mRotationKeys();
@@ -151,12 +157,16 @@ public class AnimationLoader {
 		int numRotKeys = animNode.mNumRotationKeys();
 		int numScaleKeys = animNode.mNumScalingKeys();
 		
+		if(!node.getPositions().containsKey(animName)) node.getPositions().put(animName, new ArrayList<>());
+		if(!node.getRotations().containsKey(animName)) node.getRotations().put(animName, new ArrayList<>());
+		if(!node.getScalings().containsKey(animName)) node.getScalings().put(animName, new ArrayList<>());
+		
 		for(int i = 0; i < numPosKeys; i++)
 		{
 			AIVectorKey posKey = positionKeys.get(i);
 			Vector3f position = new Vector3f(posKey.mValue().x(),posKey.mValue().y(),posKey.mValue().z());
 			PositionTransform positionTransform = new PositionTransform(position,posKey.mTime());
-			node.addPosition(positionTransform);
+			node.addPosition(animName,positionTransform);
 		}
 		
 		for(int i = 0; i < numRotKeys; i++)
@@ -164,7 +174,7 @@ public class AnimationLoader {
 			AIQuatKey rotKey = rotationKeys.get(i);
 			Quaternion rotation = new Quaternion(rotKey.mValue().x(),rotKey.mValue().y(),rotKey.mValue().z(),rotKey.mValue().w());
 			RotationTransform rotationTransform = new RotationTransform(rotation,rotKey.mTime());
-			node.addRotation(rotationTransform);
+			node.addRotation(animName,rotationTransform);
 		}
 		
 		for(int i = 0; i < numScaleKeys; i++)
@@ -172,7 +182,7 @@ public class AnimationLoader {
 			AIVectorKey scaleKey = scalingKeys.get(i);
 			Vector3f scale = new Vector3f(scaleKey.mValue().x(),scaleKey.mValue().y(),scaleKey.mValue().z());
 			ScaleTransform scaleTransform = new ScaleTransform(scale,scaleKey.mTime());
-			node.addScale(scaleTransform);
+			node.addScale(animName,scaleTransform);
 		}
 	}
 	
@@ -203,12 +213,7 @@ public class AnimationLoader {
 		String texturePath = path.dataString();
 		
 		ModelTexture texture = null;
-		if(texturePath != null && texturePath.length() > 0)
-		{
-			String[] splitPath = texturePath.split("/");
-			String finalPath = splitPath[splitPath.length-1];
-			texture = new ModelTexture(loader.loadTexture("res/" + finalPath));
-		}
+
 		
 		
 		// Get ambient colour
@@ -239,7 +244,7 @@ public class AnimationLoader {
 		materials.add(material);
 	}
 	
-	private static BaseModel processMesh(AIMesh aiMesh, List<Material> materials, List<Bone>boneList, Loader loader)
+	private static Mesh processMesh(AIMesh aiMesh, List<Material> materials, List<Bone>boneList, Loader loader)
 	{
 		List<Float> vertices = new ArrayList<>();
 		List<Float> uvs = new ArrayList<>();
@@ -264,28 +269,7 @@ public class AnimationLoader {
 		// Store bones, bone indexes and weights
 		storeBones(aiMesh,boneList,boneIds,weights);
 		
-		
-		BaseModel mesh = loader.loadToVAO(Utils.floatListToArray(vertices),
-				Utils.floatListToArray(uvs),
-				Utils.floatListToArray(normals),
-				Utils.intListToArray(indices),
-				Utils.intListToArray(boneIds),
-				Utils.floatListToArray(weights));
-		
-		Material material;
-		
-		int matIndex = aiMesh.mMaterialIndex();
-		
-		if(matIndex >= 0 && matIndex < materials.size())
-		{
-			material = materials.get(matIndex);
-		}
-		else
-		{
-			material = new Material();
-		}
-		
-		mesh.setMaterial(material);
+		Mesh mesh = new Mesh(vertices,uvs,normals,indices,boneIds,weights);
 		
 		return mesh;
 		
@@ -362,12 +346,15 @@ public class AnimationLoader {
 	private static void storeNormals(AIMesh aiMesh, List<Float> normals)
 	{
 		AIVector3D.Buffer aiNormals = aiMesh.mNormals();
-		while(aiNormals.hasRemaining())
+		if(aiNormals != null)
 		{
-			AIVector3D aiNormal = aiNormals.get();
-			normals.add(aiNormal.x());
-			normals.add(aiNormal.y());
-			normals.add(aiNormal.z());
+			while(aiNormals.hasRemaining())
+			{
+				AIVector3D aiNormal = aiNormals.get();
+				normals.add(aiNormal.x());
+				normals.add(aiNormal.y());
+				normals.add(aiNormal.z());
+			}
 		}
 	}
 	

@@ -9,6 +9,9 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector4f;
+
+import combat.Ability;
+import combat.AbilityRenderer;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
@@ -45,9 +48,12 @@ public class AdvancedRenderer {
 	
 	private SkyboxRenderer skyboxRenderer;
 	
-	private Map<TexturedModel,List<Entity>> entities = new HashMap<TexturedModel,List<Entity>>(); // Store entities with reference to their model
-	private List<Terrain> terrains = new ArrayList<Terrain>(); // Store list of terrains to be rendered
-
+	private AbilityRenderer abilityRenderer;
+	
+	private Map<TexturedModel,List<Entity>> entities = new HashMap<>(); // Store entities with reference to their model
+	private List<Terrain> terrains = new ArrayList<>(); // Store list of terrains to be rendered
+	
+	private List<Ability> abilities;
 	public AdvancedRenderer(Loader loader, Camera camera)
 	{
 		enableCulling();
@@ -55,6 +61,7 @@ public class AdvancedRenderer {
 		renderer = new EntityRenderer(entityShader,stencilShader,projectionMatrix);
 		terrainRenderer = new TerrainRenderer(terrainShader, projectionMatrix);
 		skyboxRenderer = new SkyboxRenderer(loader, projectionMatrix);
+		abilityRenderer = new AbilityRenderer(loader,projectionMatrix);
 		this.shadowRenderer = new ShadowRenderer(camera);
 	}
 	
@@ -87,15 +94,6 @@ public class AdvancedRenderer {
 	public void render(List<Light> lights, Camera camera, Vector4f clipPlane)
 	{
 		prepare();
-		entityShader.start();
-		entityShader.loadClipPlane(clipPlane);
-		entityShader.loadLights(lights);
-		entityShader.loadViewMatrix(camera);
-		entityShader.stop();
-		stencilShader.start();
-		stencilShader.loadViewMatrix(camera);
-		stencilShader.stop();
-		renderer.render(entities);
 		terrainShader.start();
 		terrainShader.loadClipPlane(clipPlane);
 		terrainShader.loadLights(lights);
@@ -109,9 +107,19 @@ public class AdvancedRenderer {
 		{
 			terrainShader.loadCausticEffect(0.0f);
 		}
-		
 		terrainRenderer.render(terrains,shadowRenderer.getToShadowMapSpaceMatrix());
 		terrainShader.stop();
+		abilityRenderer.render(abilities, camera);
+		entityShader.start();
+		entityShader.loadClipPlane(clipPlane);
+		entityShader.loadLights(lights);
+		entityShader.loadViewMatrix(camera);
+		entityShader.stop();
+		stencilShader.start();
+		stencilShader.loadViewMatrix(camera);
+		stencilShader.stop();
+		renderer.render(entities);
+
 		skyboxRenderer.render(camera, RED, GREEN, BLUE);
 		terrains.clear();
 		entities.clear();
@@ -134,16 +142,16 @@ public class AdvancedRenderer {
 	
 	public void processEntity(Entity entity)
 	{
-		TexturedModel entityModel = entity.getModel();
-		List<Entity> batch = entities.get(entityModel);
+		TexturedModel model = entity.getModel();
+		List<Entity> batch = entities.get(model);
 		if(batch!=null)
 		{
 			batch.add(entity);
 		}else
 		{
-			List<Entity> newBatch = new ArrayList<Entity>();
+			List<Entity> newBatch = new ArrayList<>();
 			newBatch.add(entity);
-			entities.put(entityModel, newBatch);
+			entities.put(model, newBatch);
 		}
 	}
 	
@@ -155,6 +163,11 @@ public class AdvancedRenderer {
 		}
 		shadowRenderer.render(entities, sun);
 		entities.clear();
+	}
+	
+	public void setAbilities(List<Ability> abilities)
+	{
+		this.abilities = abilities;
 	}
 	
 	public int getShadowMapTexture()

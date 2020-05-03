@@ -1,21 +1,25 @@
 package entities;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.lwjgl.util.vector.Vector3f;
 
 import components.Component;
+import models.BaseModel;
 import models.TexturedModel;
 import physics.AABB;
+import physics.CollisionBox;
 import physics.Triangle;
 import rendering.Window;
 
 public class Entity {
 
 	private AABB aabb;
-	private TexturedModel texturedModel;
+	private TexturedModel model;
 	private Vector3f position;
 	private float rotX, rotY, rotZ, scale;
 	private Triangle[] triangles;
@@ -34,19 +38,27 @@ public class Entity {
 	// Component list to retain a component based architecture
 	private Map<String,Component> components;
 	
+	// Generate list of collision boxes for physics engine
+	private List<CollisionBox> collisionBoxes;
+	
+	private List<Entity> addedItems;
+	
+	public Entity parent;
+	
 	public Entity(TexturedModel model, Vector3f position, 
 			float rotX, float rotY, float rotZ, float scale)
 	{
-		this.texturedModel = model;
+		this.model = model;
 		this.position = position;
 		this.rotX = rotX;
 		this.rotY = rotY;
 		this.rotZ = rotZ;
 		this.scale = scale;
 		this.aabb = new AABB(this, this.position);
-		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
 		this.components = new HashMap<>();
 		this.id = UUID.randomUUID();
+		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
+		this.addedItems = new ArrayList<>();
 		setTriangles();
 	}
 	
@@ -54,16 +66,17 @@ public class Entity {
 			float rotX, float rotY, float rotZ, float scale)
 	{
 		this.textureIndex = index;
-		this.texturedModel = model;
+		this.model = model;
 		this.position = position;
 		this.rotX = rotX;
 		this.rotY = rotY;
 		this.rotZ = rotZ;
 		this.scale = scale;
 		this.aabb = new AABB(this, this.position);
-		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
 		this.components = new HashMap<>();
 		this.id = UUID.randomUUID();
+		this.triangles = new Triangle[this.getModel().getBaseModel().getIndices().length/3];
+		this.addedItems = new ArrayList<>();
 		setTriangles();
 	}
 	
@@ -74,18 +87,36 @@ public class Entity {
 		{
 			components.get(componentName).update();
 		}
+		
+		for(Entity item: addedItems)
+		{
+			item.setPosition(this.getPosition());
+			item.setRotX(this.getRotX());
+			item.setRotY(this.getRotY());
+			item.setRotZ(this.getRotZ());
+		}
+	}
+	
+	public void addItem(Entity item)
+	{
+		this.addedItems.add(item);
+	}
+	
+	public List<Entity> getAddedItems()
+	{
+		return addedItems;
 	}
 	
 	public float getTextureXOffset()
 	{
-		int column = textureIndex%texturedModel.getTexture().getNumberOfRows();
-		return (float)column/(float)texturedModel.getTexture().getNumberOfRows();
+		int column = textureIndex%model.getTexture().getNumberOfRows();
+		return (float)column/(float)model.getTexture().getNumberOfRows();
 	}
 	
 	public float getTextureYOffset()
 	{
-		int row = textureIndex/texturedModel.getTexture().getNumberOfRows();
-		return (float)row/(float)texturedModel.getTexture().getNumberOfRows();
+		int row = textureIndex/model.getTexture().getNumberOfRows();
+		return (float)row/(float)model.getTexture().getNumberOfRows();
 	}
 	
 	
@@ -109,6 +140,11 @@ public class Entity {
 		this.components.put(component.getName(), component);
 	}
 	
+	public void addCollisionBox(CollisionBox collisionBox)
+	{
+		collisionBoxes.add(collisionBox);
+	}
+	
 	public Component getComponentByName(String name)
 	{
 		return components.get(name);
@@ -127,6 +163,19 @@ public class Entity {
 		return null;
 	}
 	
+	public boolean hasComponent(Class<?> type)
+	{
+		for(String componentName: components.keySet())
+		{
+			if(components.get(componentName).getClass().equals(type))
+			{
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
 	public void cleanUpComponents()
 	{
 		for(String componentName: components.keySet())
@@ -136,10 +185,10 @@ public class Entity {
 	}
 	
 	public TexturedModel getModel() {
-		return texturedModel;
+		return model;
 	}
-	public void setModel(TexturedModel model) {
-		this.texturedModel = model;
+	public void setModels(TexturedModel model) {
+		this.model = model;
 	}
 	public Vector3f getPosition() {
 		return position;
@@ -205,46 +254,6 @@ public class Entity {
 		this.clicked = clicked;
 	}
 	
-	// Interpolate position
-	public void interpolatePosition(Vector3f prevPosition, Vector3f nextPos)
-	{	
-		if(prevPosition == null || nextPos == null)
-		{
-			return;
-		}
-		Vector3f diffPos = Vector3f.sub(nextPos, prevPosition, null);
-		float velX = diffPos.x / 0.125f;
-		float velY = diffPos.y / 0.125f;
-		float velZ = diffPos.z / 0.125f;
-		
-		float dx = velX * Window.getFrameTime();
-		float dy = velY * Window.getFrameTime();
-		float dz = velZ * Window.getFrameTime();
-		
-		increasePosition(dx,dy,dz);
-		
-	}
-	
-	// Interpolate rotation
-	/*public void interpolateRotation(float prevRotX, float prevRotY, float prevRotZ,
-									float nextRotX, float nextRotY, float nextRotZ)
-	{
-		if(Client.getCurrentPlayerPosition() == null || Client.getUpdateTime() == 0)
-		{
-			return;
-		}
-		
-		float diffX = nextRotX - prevRotX;
-		float diffY = nextRotY - prevRotY;
-		float diffZ = nextRotZ - prevRotZ;
-		
-		float rx = (diffX / Client.getUpdateTime()) * Window.getFrameTime();
-		float ry = (diffY / Client.getUpdateTime()) * Window.getFrameTime();
-		float rz = (diffZ / Client.getUpdateTime()) * Window.getFrameTime();
-		
-		increaseRotation(rx,ry,rz);
-	}*/
-	
 	public boolean isPlayerInClickRange(Entity player)
 	{
 		Vector3f centre = aabb.getCentre(); // Get centre of the entity's model
@@ -309,6 +318,59 @@ public class Entity {
 		}
 	}
 	
+	public Vector3f findMinVertex()
+	{
+		return this.model.getBaseModel().findMinVertex();
+	}
+	
+	public Vector3f findMaxVertex()
+	{
+		return this.model.getBaseModel().findMaxVertex();
+	}
+	
+	public float getModelHeight()
+	{
+		float height = 0;
+		Vector3f min = this.findMinVertex();
+		Vector3f max = this.findMaxVertex();
+		
+		height = max.y - min.y;
+		
+		return height;
+	}
+	
+	public float getModelWidth()
+	{
+		float width = 0;
+		Vector3f min = this.findMinVertex();
+		Vector3f max = this.findMaxVertex();
+		
+		width = max.x - min.x;
+		
+		return width;
+	}
+	
+	public float getModelZWidth()
+	{
+		float length = 0;
+		Vector3f min = this.findMinVertex();
+		Vector3f max = this.findMaxVertex();
+		
+		length = max.z - min.z;
+		
+		return length;
+	}
+	
+	public Vector3f calculateCentre()
+	{
+		Vector3f centre;
+		float midPointX = findMinVertex().x + ((findMaxVertex().x - findMinVertex().x)/2);
+		float midPointY = findMinVertex().y + ((findMaxVertex().y - findMinVertex().y)/2);
+		float midPointZ = findMinVertex().z + ((findMaxVertex().z - findMinVertex().z)/2);
+		centre = new Vector3f(midPointX, midPointY, midPointZ);
+		return centre;
+	}
+	
 	public Triangle[] getTriangles()
 	{
 		return triangles;
@@ -337,6 +399,11 @@ public class Entity {
 	public UUID getID()
 	{
 		return id;
+	}
+	
+	public void setID(UUID id)
+	{
+		this.id = id;
 	}
 
 	@Override

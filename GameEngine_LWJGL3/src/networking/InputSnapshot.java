@@ -61,6 +61,8 @@ public class InputSnapshot {
 			
 		}
 		
+		result += "," + this.index;
+		
 		return result.getBytes();
 	}
 
