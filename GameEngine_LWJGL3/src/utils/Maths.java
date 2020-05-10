@@ -6,6 +6,7 @@ import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 import entities.Camera;
+import rendering.Window;
 
 public class Maths {
 	
@@ -59,6 +60,13 @@ public class Maths {
 		Matrix4f.scale(scale, transformationMatrix, transformationMatrix);
 		Matrix4f modelViewMatrix = Matrix4f.mul(viewMatrix, transformationMatrix, null);
 		return modelViewMatrix;
+	}
+	
+	public static Vector2f getNormalizedDeviceCoords(float mouseX, float mouseY)
+	{
+		float x = (2f*mouseX) / Window.getWidth() - 1f;
+		float y = (2f*mouseY) / Window.getHeight() - 1f;
+		return new Vector2f(x,-y);
 	}
 	
 	public static Matrix4f createViewMatrix(Camera camera)

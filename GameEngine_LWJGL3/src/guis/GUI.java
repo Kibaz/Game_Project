@@ -10,6 +10,8 @@ public class GUI{
 	private boolean hovered;
 	private boolean visible;
 	
+	private boolean selected;
+	
 	private boolean clicked;
 	private boolean fbo;
 	
@@ -18,6 +20,7 @@ public class GUI{
 		this.texture = texture;
 		this.visible = true;
 		this.clicked = false;
+		this.selected = false;
 		this.fbo = false;
 	}
 
@@ -58,6 +61,14 @@ public class GUI{
 
 	public void setClicked(boolean clicked) {
 		this.clicked = clicked;
+	}
+
+	public boolean isSelected() {
+		return selected;
+	}
+
+	public void setSelected(boolean selected) {
+		this.selected = selected;
 	}
 
 	public boolean isFbo() {

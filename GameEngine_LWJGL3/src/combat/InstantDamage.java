@@ -1,5 +1,7 @@
 package combat;
 
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import org.lwjgl.util.vector.Vector3f;
@@ -7,6 +9,9 @@ import org.lwjgl.util.vector.Vector3f;
 import components.CombatManager;
 import components.EntityInformation;
 import entities.Entity;
+import equip.EquipInventory;
+import equip.EquipItem;
+import equip.EquipSlot;
 import fontUtils.GUIText;
 import runtime.Main;
 
@@ -51,6 +56,23 @@ public class InstantDamage extends Effect {
 		// Modify damage using entity's info
 		float totalDamage = damage * ((float) damage / (damage + info.getArmour()));
 		damage = (int) Math.ceil(totalDamage);
+		
+		
+		// Modify durability of damaged enemy's armour items
+		if(entity.hasComponent(EquipInventory.class))
+		{
+			EquipInventory inventory = entity.getComponentByType(EquipInventory.class);
+			Map<EquipSlot,Entity> items = inventory.getInventory();
+			for(Entry<EquipSlot,Entity> entry: items.entrySet())
+			{
+				Entity item = entry.getValue();
+				if(item != null)
+				{
+					EquipItem equipItem = item.getComponentByType(EquipItem.class);
+					equipItem.setDurability(equipItem.getDurability()-1);
+				}
+			}
+		}
 		
 		info.setHealth(info.getHealth() - damage);
 		

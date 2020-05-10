@@ -9,16 +9,11 @@ import components.Component;
 import entities.Entity;
 import guis.GUI;
 import guis.GUITexture;
+import inventory.Inventory;
+import inventory.Item;
+import rendering.Window;
 
-public class EquipItem extends Component {
-	
-	/*
-	 * Store a 2D graphic to display in inventory
-	 * or equip inventory
-	 */
-	
-	private GUITexture iconTexture;
-	private GUI icon;
+public class EquipItem extends Item {
 	
 	// Display GUI for durability
 	private GUITexture durabilityIndicatorTexture;
@@ -35,14 +30,11 @@ public class EquipItem extends Component {
 	 * will be removed from the entity
 	 */
 	private final int maxDurability;
+	private final float maxDurabilityScale;
 	
 	private int durability;
 	
-	private String itemName;
-	
 	private String attachPoint; // Name of bone where item will be attached
-	
-	private Entity parent; // Entity to attach to
 	
 	private List<ItemStat> stats;
 	
@@ -52,18 +44,16 @@ public class EquipItem extends Component {
 	public EquipItem(String itemName,int maxDurability, int durability,
 			String attachPoint,EquipSlot equipSlot,int iconTexture, int durabilityTexture)
 	{
-		super("equipItem");
+		super(itemName,iconTexture);
 		this.equipSlot = equipSlot;
 		this.stats = new ArrayList<>();
-		this.itemName = itemName;
 		this.attachPoint = attachPoint;
 		this.maxDurability = maxDurability;
 		this.durability = durability;
-		this.iconTexture = new GUITexture(iconTexture,new Vector2f(0,0),new Vector2f(1,1));
-		this.icon = new GUI(this.iconTexture);
-		icon.setVisible(false); // Not visible by default
-		this.durabilityIndicatorTexture = new GUITexture(durabilityTexture,new Vector2f(0,0),new Vector2f(1,1));
+		this.maxDurabilityScale = 237f/Window.getWidth();
+		this.durabilityIndicatorTexture = new GUITexture(durabilityTexture,new Vector2f(0,0),new Vector2f(maxDurabilityScale,0.2f));
 		this.durabilityIndicator = new GUI(this.durabilityIndicatorTexture);
+		durabilityIndicator.setVisible(false);
 	}
 	
 	public void addStat(ItemStat stat)
@@ -84,16 +74,6 @@ public class EquipItem extends Component {
 	public void setDurabilityScale(Vector2f scale)
 	{
 		this.durabilityIndicatorTexture.setScale(scale);
-	}
-	
-	public void setIconPosition(Vector2f position)
-	{
-		this.iconTexture.setPosition(position);
-	}
-	
-	public void setIconScale(Vector2f scale)
-	{
-		this.iconTexture.setScale(scale);
 	}
 	
 	public ItemStat getByName(String statName)
@@ -117,8 +97,13 @@ public class EquipItem extends Component {
 
 	@Override
 	public void update() {
-		// TODO Auto-generated method stub
 		
+		super.update();
+		// Reduce durability
+		float scaleFactor = durability / (float) maxDurability;
+		float prevScale = durabilityIndicatorTexture.getScale().x;
+		durabilityIndicatorTexture.getScale().x = scaleFactor * maxDurabilityScale;
+		durabilityIndicatorTexture.getPosition().x -= (prevScale - durabilityIndicatorTexture.getScale().x) * 0.725f; 
 	}
 
 	@Override
@@ -133,10 +118,6 @@ public class EquipItem extends Component {
 		
 	}
 
-	public String getItemName() {
-		return itemName;
-	}
-
 	// Getters and Setters
 	public List<ItemStat> getStats() {
 		return stats;
@@ -149,13 +130,10 @@ public class EquipItem extends Component {
 	public String getAttachPoint() {
 		return attachPoint;
 	}
-
-	public Entity getParent() {
-		return parent;
-	}
-
-	public void setParent(Entity parent) {
-		this.parent = parent;
+	
+	public void setAttachPoint(String boneName)
+	{
+		this.attachPoint = boneName;
 	}
 
 	public int getDurability() {
@@ -170,21 +148,23 @@ public class EquipItem extends Component {
 		return maxDurability;
 	}
 
-	public GUITexture getIconTexture() {
-		return iconTexture;
+	public GUITexture getDurabilityIndicatorTexture() {
+		return durabilityIndicatorTexture;
 	}
 
-	public void setIconTexture(GUITexture iconTexture) {
-		this.iconTexture = iconTexture;
+	public void setDurabilityIndicatorTexture(GUITexture durabilityIndicatorTexture) {
+		this.durabilityIndicatorTexture = durabilityIndicatorTexture;
 	}
 
-	public GUI getIcon() {
-		return icon;
+	public GUI getDurabilityIndicator() {
+		return durabilityIndicator;
 	}
 
-	public void setIcon(GUI icon) {
-		this.icon = icon;
+	public void setDurabilityIndicator(GUI durabilityIndicator) {
+		this.durabilityIndicator = durabilityIndicator;
 	}
+	
+	
 	
 	
 	

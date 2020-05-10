@@ -35,17 +35,20 @@ public class GUIRenderer {
 		GL11.glEnable(GL11.GL_BLEND);
 		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 		GL11.glDisable(GL11.GL_DEPTH_TEST);
+		// Render non-selected GUIs
 		for(GUI gui: guis)
 		{
-			if(gui.isVisible())
+			if(gui.isVisible() && !gui.isSelected())
 			{
-				GL13.glActiveTexture(GL13.GL_TEXTURE0);
-				GL11.glBindTexture(GL11.GL_TEXTURE_2D, gui.getGUITexture().getTexture());
-				Matrix4f matrix = Maths.createTransformationMatrix(gui.getGUITexture().getPosition(),gui.getGUITexture().getScale());
-				shader.loadHovered(gui.isHovered());
-				shader.loadTransformationMatrix(matrix);
-				shader.loadFBO(gui.isFbo());
-				GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, quad.getVertCount());
+				renderGUI(gui);
+			}
+		}
+		// Render selected GUIs
+		for(GUI gui: guis)
+		{
+			if(gui.isVisible() && gui.isSelected())
+			{
+				renderGUI(gui);
 			}
 		}
 		GL11.glDisable(GL11.GL_BLEND);
@@ -53,6 +56,17 @@ public class GUIRenderer {
 		GL20.glDisableVertexAttribArray(0);
 		GL30.glBindVertexArray(0);
 		shader.stop();
+	}
+	
+	private void renderGUI(GUI gui)
+	{
+		GL13.glActiveTexture(GL13.GL_TEXTURE0);
+		GL11.glBindTexture(GL11.GL_TEXTURE_2D, gui.getGUITexture().getTexture());
+		Matrix4f matrix = Maths.createTransformationMatrix(gui.getGUITexture().getPosition(),gui.getGUITexture().getScale());
+		shader.loadHovered(gui.isHovered());
+		shader.loadTransformationMatrix(matrix);
+		shader.loadFBO(gui.isFbo());
+		GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, quad.getVertCount());
 	}
 	
 	public void cleanUp()

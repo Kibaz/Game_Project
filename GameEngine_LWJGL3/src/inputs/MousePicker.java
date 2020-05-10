@@ -14,6 +14,7 @@ import components.EntityProfile;
 import components.HealthBarFrame;
 import entities.Camera;
 import entities.Entity;
+import equip.EquipItem;
 import guis.GUI;
 import guis.GUITexture;
 import physics.AABB;
@@ -66,6 +67,14 @@ public class MousePicker {
 	public Entity getPreviousHoveredEntity()
 	{
 		return previousHoveredEntity;
+	}
+
+	public void setCurrentHoveredEntity(Entity currentHoveredEntity) {
+		this.currentHoveredEntity = currentHoveredEntity;
+	}
+
+	public void setPreviousHoveredEntity(Entity previousHoveredEntity) {
+		this.previousHoveredEntity = previousHoveredEntity;
 	}
 
 	public Vector3f getRay()
@@ -256,7 +265,7 @@ public class MousePicker {
 	{
 		float mouseX = MouseCursor.getXPos();
 		float mouseY = MouseCursor.getYPos();
-		Vector2f normalizedCoords = getNormalizedDeviceCoords(mouseX,mouseY);
+		Vector2f normalizedCoords = Maths.getNormalizedDeviceCoords(mouseX,mouseY);
 		Vector4f clipCoords = new Vector4f(normalizedCoords.x, normalizedCoords.y, -1f, 1f);
 		Vector4f eyeCoords = toEyeSpace(clipCoords);
 		Vector3f worldRay = toWorldSpace(eyeCoords);
@@ -279,13 +288,6 @@ public class MousePicker {
 		return new Vector4f(eyeCoords.x, eyeCoords.y, -1f, 0f);
 	}
 	
-	private Vector2f getNormalizedDeviceCoords(float mouseX, float mouseY)
-	{
-		float x = (2f*mouseX) / Window.getWidth() - 1f;
-		float y = (2f*mouseY) / Window.getHeight() - 1f;
-		return new Vector2f(x,-y);
-	}
-	
 	private boolean intersectsGUI(GUI gui)
 	{
 		float minX = gui.getGUITexture().getPosition().x - (gui.getGUITexture().getScale().x);
@@ -293,7 +295,7 @@ public class MousePicker {
 		float maxX = gui.getGUITexture().getPosition().x + (gui.getGUITexture().getScale().x);
 		float maxY = gui.getGUITexture().getPosition().y + (gui.getGUITexture().getScale().y);
 		
-		Vector2f normalisedCoords = getNormalizedDeviceCoords(MouseCursor.getXPos(),MouseCursor.getYPos());
+		Vector2f normalisedCoords = Maths.getNormalizedDeviceCoords(MouseCursor.getXPos(),MouseCursor.getYPos());
 		
 		if(normalisedCoords.x > minX &&
 			normalisedCoords.y > minY &&

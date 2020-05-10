@@ -15,6 +15,8 @@ import components.EntityInformation;
 import entities.Entity;
 import equip.EquipInventory;
 import equip.EquipItem;
+import inventory.Inventory;
+import inventory.Item;
 import models.BaseModel;
 import models.TexturedModel;
 import shaders.EntityShader;
@@ -95,12 +97,11 @@ public class EntityRenderer {
 	}
 	
 	private void renderEntity(Entity entity, TexturedModel model) {
-		boolean render = true;
 		if(entity.hasComponent(EquipItem.class))
 		{
 			EquipItem item = entity.getComponentByType(EquipItem.class);
 			Entity parent = item.getParent();
-			if(parent != null)
+			if(parent != null && item.getParent().getComponentByType(EquipInventory.class).isEquipped(entity))
 			{
 				// Render item at location of parent and attachment point
 				AnimationComponent parentAnim = parent.getComponentByType(AnimationComponent.class);
@@ -112,7 +113,7 @@ public class EntityRenderer {
 			}
 			else
 			{
-				render = false;
+				prepareEntity(entity); // Got dropped
 			}
 		}
 		else
@@ -130,10 +131,24 @@ public class EntityRenderer {
 			shader.loadAnimationComponent(false);
 		}
 		
+		boolean render = true;
+		if(entity.hasComponent(Item.class) || entity.hasComponent(EquipItem.class))
+		{
+			Item item = entity.getComponentByType(Item.class);
+			if(item == null) item = entity.getComponentByType(EquipItem.class);
+			if(item.getParent() != null && item.getParent().hasComponent(Inventory.class)
+					&& item.getParent().getComponentByType(Inventory.class).containsItem(item))
+			{
+				render = false;
+			}
+		}
+		
 		if(render)
 		{
 			GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(),GL11.GL_UNSIGNED_INT,0);
 		}
+		
+		
 		
 	}
 	
@@ -167,11 +182,15 @@ public class EntityRenderer {
 					{
 						stencilShader.loadAnimationComponent(false);
 					}
-					EntityInformation info = entity.getComponentByType(EntityInformation.class);
-					if(info != null)
+					
+					if(entity.hasComponent(EntityInformation.class))
 					{
+						EntityInformation info = entity.getComponentByType(EntityInformation.class);
 						stencilShader.loadHostility(info.isHostile());
 					}
+					
+					// Tell GPU if the entity is an item
+					stencilShader.loadIsItem(entity.hasComponent(EquipItem.class));
 					
 					GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 				}

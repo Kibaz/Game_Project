@@ -1,8 +1,10 @@
 package components;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import org.lwjgl.util.vector.Vector2f;
@@ -10,6 +12,9 @@ import org.lwjgl.util.vector.Vector3f;
 
 import combat.Ability;
 import entities.Entity;
+import equip.EquipInventory;
+import equip.EquipItem;
+import equip.EquipSlot;
 import rendering.Window;
 import terrains.Terrain;
 import utils.Maths;
@@ -59,6 +64,7 @@ public class AI extends Component {
 	}
 	
 	private State state;
+	private State prevState;
 	
 	private float idleTime;
 	private float idleTimeLimit;
@@ -82,6 +88,7 @@ public class AI extends Component {
 		currentVelocity = new Vector2f(0,0);
 		acceleration = new Vector2f(0,0);
 		state = State.WANDER;
+		prevState = State.WANDER;
 		randomiser = new Random();
 		currentSpeed = WALK_SPEED;
 	}
@@ -100,46 +107,65 @@ public class AI extends Component {
 	public void update() {
 		if(entity != null)
 		{	
-			if(entity != null)
+			verifyAction();
+			
+			EntityInformation info = entity.getComponentByType(EntityInformation.class);
+			if(info != null)
 			{
-				verifyAction();
-				
-				EntityInformation info = entity.getComponentByType(EntityInformation.class);
-				if(info != null)
+				if(info.getHealth() <= 0)
 				{
-					if(info.getHealth() <= 0)
-					{
-						state = State.DEAD;
-					}
+					state = State.DEAD;
+				}
+			}
+			
+			// Update ability damage indicators
+			for(String abilityName: abilities.keySet())
+			{
+				abilities.get(abilityName).getDamageIndicator().setPosition(entity.getPosition());
+				abilities.get(abilityName).getDamageIndicator().setRotY(entity.getRotY());
+			}
+			
+			if(targetToAttack != null)
+			{
+				CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
+				if(combatManager != null)
+				{
+					combatManager.setInCombat(true);
 				}
 				
-				// Update ability damage indicators
-				for(String abilityName: abilities.keySet())
+				if(state == State.DEAD)
 				{
-					abilities.get(abilityName).getDamageIndicator().setPosition(entity.getPosition());
-					abilities.get(abilityName).getDamageIndicator().setRotY(entity.getRotY());
-				}
-				
-				if(targetToAttack != null)
-				{
-					CombatManager combatManager = targetToAttack.getComponentByType(CombatManager.class);
-					if(combatManager != null)
-					{
-						combatManager.setInCombat(true);
-					}
+					// Grant experience to target
+					EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
+					float experienceGain = (info.getLevel() / (float) targetInfo.getLevel()) * (0.1f * targetInfo.getExperienceCap());
+					targetInfo.setExperience(targetInfo.getExperience() + (int) experienceGain);
+					combatManager.setInCombat(false);
+					targetToAttack = null;
+					QuestTracker.notifyTracker(info);
 					
-					if(state == State.DEAD)
+					// Check if entity just died
+					if(prevState != State.DEAD)
 					{
-						// Grant experience to target
-						EntityInformation targetInfo = targetToAttack.getComponentByType(EntityInformation.class);
-						float experienceGain = (info.getLevel() / (float) targetInfo.getLevel()) * (0.1f * targetInfo.getExperienceCap());
-						targetInfo.setExperience(targetInfo.getExperience() + (int) experienceGain);
-						combatManager.setInCombat(false);
-						targetToAttack = null;
-						QuestTracker.notifyTracker(info);
+						// Drop all items
+						if(entity.hasComponent(EquipInventory.class))
+						{
+							EquipInventory equipment = entity.getComponentByType(EquipInventory.class);
+							Iterator<Entry<EquipSlot,Entity>> equipIt = equipment.getInventory().entrySet().iterator();
+							while(equipIt.hasNext())
+							{
+								Entry<EquipSlot,Entity> entry = equipIt.next();
+								Entity itemEntity = entry.getValue();
+								EquipItem equipItem = itemEntity.getComponentByType(EquipItem.class);
+								itemEntity.setPosition(equipItem.getParent().getPosition());
+								itemEntity.getAABB().resetBox(itemEntity.getPosition());
+								equipment.unequip(itemEntity); // Un-equip the item
+							}
+						}
 					}
 				}
 			}
+			
+			prevState = state;
 		}
 	}
 	

@@ -57,6 +57,7 @@ import guis.HUD;
 import guis.HUDRenderer;
 import inputs.MousePicker;
 import interfaceObjects.Quest;
+import inventory.Inventory;
 import models.BaseModel;
 import models.TexturedModel;
 import networking.Client;
@@ -153,6 +154,8 @@ public class Main {
 		EntityInformation playerInfo = new EntityInformation("Player",1,100,100);
 		EquipInventory playerEquip = new EquipInventory(true);
 		guis.addAll(playerEquip.getGuis());
+		Inventory inventory = new Inventory(4,4);
+		player.addComponent(inventory);
 		player.addComponent(playerEquip);
 		player.addComponent(playerInfo);
 		player.addComponent(playerHealthFrame);
@@ -169,14 +172,22 @@ public class Main {
 		
 		BaseModel[] armourTestModels = StaticModelLoader.load("res/cube.obj", loader);
 		TexturedModel armourTestMod = new TexturedModel(armourTestModels[0],player.getModel().getTexture());
-		Entity armourTest = new Entity(armourTestMod,new Vector3f(150,
-				tigranStartZone.getTerrains().get(0).getTerrainHeight(150, 150),150),-90,0,0,1);
-		EquipItem testEquip = new EquipItem("Test",35,35,"Chest",EquipSlot.CHEST,
-				loader.loadTexture("res/chest_piece.png",false),durabilityTexture);
-		guis.add(testEquip.getIcon());
-		testEquip.addStat(new Armour(10));
-		armourTest.addComponent(testEquip);
-		entities.add(armourTest);
+		
+		for(int i = 0; i < 18; i ++)
+		{
+			Entity armourTest = new Entity(armourTestMod,new Vector3f(170,
+					tigranStartZone.getTerrains().get(0).getTerrainHeight(170, 150),150),-90,0,0,1);
+			armourTest.setClickable(true);
+			EquipItem testEquip = new EquipItem("Test",35,35,"Chest",EquipSlot.CHEST,
+					loader.loadTexture("res/chest_piece.png",false),durabilityTexture);
+			guis.add(testEquip.getDurabilityIndicator());
+			testEquip.addStat(new Armour(10));
+			testEquip.setStackLimit(10);
+			armourTest.addComponent(testEquip);
+			entities.add(armourTest);
+			World.addEntity(armourTest);
+		}
+
 		
 		Entity testQuestGuy = new Entity(player.getModel(),new Vector3f(150,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(150, 150),150),-90,0,0,1);
@@ -289,11 +300,12 @@ public class Main {
 		TexturedModel redcapAxeModel = new TexturedModel(redcapAxeParts[0],axeTexture);
 		Entity redcapAxe = new Entity(redcapAxeModel, new Vector3f(100,tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1);
 		EquipItem redcapAxeItem = new EquipItem("Redcap Axe",-1,-1,"bn_wirst_l",EquipSlot.MAIN_HAND,
-				loader.loadTexture("res/chest_piece.png"),durabilityTexture);
+				loader.loadTexture("res/redcap_axe_icon.png"),durabilityTexture);
 		redcapAxe.addComponent(redcapAxeItem);
 		redcapAxeItem.addStat(new Damage(4,15));
 		redcapInventory.equip(redcapAxe);
 		entities.add(redcapAxe);
+		World.addEntity(redcapAxe);
 		
 		ArcIndicator redcapMeleeIndicator = new ArcIndicator(redcap.getPosition(),0,15,100,15,120);
 		redcapMeleeIndicator.buildIndicator(loader,terrains);
@@ -367,8 +379,6 @@ public class Main {
 				}
 			}
 			
-			client.equipItem(armourTest);
-			
 			for(UUID entityID: Client.getEntityQueue().keySet())
 			{
 				
@@ -407,6 +417,13 @@ public class Main {
 				QuestInterface questInterface = picker.getCurrentHoveredEntity().getComponentByType(QuestInterface.class);
 				if(questInterface != null) questInterface.setVisible(true);
 				if(healthFrame != null) healthFrame.setVisible(true);
+				if(picker.getCurrentHoveredEntity().hasComponent(EquipItem.class))
+				{
+					picker.getCurrentHoveredEntity().getComponentByType(EquipItem.class).setAttachPoint("Hand_L");
+					inventory.addItem(picker.getCurrentHoveredEntity().getComponentByType(EquipItem.class));
+					picker.setCurrentHoveredEntity(null);
+					picker.setPreviousHoveredEntity(null);
+				}
 			}
 			
 			if(picker.getPreviousHoveredEntity() != null)
@@ -486,6 +503,15 @@ public class Main {
 			ParticleManager.render(camera);
 			
 			hudRenderer.render(huds, camera);
+			
+			for(GUI gui: inventory.getGuis())
+			{
+				if(!guis.contains(gui))
+				{
+					guis.add(gui);
+				}
+			}
+			
 			guiRenderer.render(guis);
 
 			

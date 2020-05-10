@@ -17,6 +17,7 @@ public class StencilShader extends ShaderProgram {
 	private int location_jointTransforms[];
 	private int location_hasAnimation;
 	private int location_hostile;
+	private int location_isItem;
 	
 	public StencilShader() {
 		super(VERTEX_SHADER,FRAGMENT_SHADER);
@@ -40,6 +41,7 @@ public class StencilShader extends ShaderProgram {
 			location_jointTransforms[i] = loc;
 		}
 		location_hostile = super.getUniformLocation("hostile");
+		location_isItem = super.getUniformLocation("isItem");
 	}
 	
 	public void loadTransformationMatrix(Matrix4f matrix)
@@ -61,6 +63,11 @@ public class StencilShader extends ShaderProgram {
 	public void loadHostility(boolean hostile)
 	{
 		super.loadBoolean(location_hostile, hostile);
+	}
+	
+	public void loadIsItem(boolean isItem)
+	{
+		super.loadBoolean(location_isItem, isItem);
 	}
 	
 	public void loadJointTransforms(Matrix4f[] jointTransforms)

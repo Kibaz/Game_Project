@@ -10,7 +10,7 @@ import fontUtils.GUIText;
 import guis.GUI;
 import guis.GUITexture;
 
-public class HealthBarFrame extends Component{
+public class HealthBarFrame extends Component {
 	
 	private float health;
 	private float maxHealth;

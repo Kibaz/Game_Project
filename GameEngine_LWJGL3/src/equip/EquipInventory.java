@@ -129,7 +129,8 @@ public class EquipInventory extends Component {
 			// Throw cannot equip error
 			return;
 		}
-		
+		entity.setClickable(false); // Can't interact with entity if equipped
+		entity.setHovered(false);
 		EquipItem equipItem = entity.getComponentByType(EquipItem.class);
 		Entity currentItem = inventory.get(equipItem.getEquipSlot());
 		if(currentItem != null)
@@ -154,6 +155,8 @@ public class EquipInventory extends Component {
 			equipItem.setIconPosition(findIconPosition(equipItem.getEquipSlot()));
 			equipItem.setIconScale(new Vector2f((float)SLOT_WIDTH/Window.getWidth(),
 					(float)SLOT_HEIGHT/Window.getHeight()));
+			Vector2f itemPosition = equipItem.getIcon().getGUITexture().getPosition();
+			equipItem.setDurabilityPosition(new Vector2f(itemPosition.x,itemPosition.y - 0.18f));
 		}
 	}
 	
@@ -180,6 +183,7 @@ public class EquipInventory extends Component {
 	{
 		// Remove item modifiers
 		EquipItem equipItem = entity.getComponentByType(EquipItem.class);
+		entity.setClickable(true); // Interactive when unequipped
 		List<ItemStat> modifiers = equipItem.getStats();
 		for(ItemStat modifier: modifiers)
 		{
@@ -196,6 +200,7 @@ public class EquipInventory extends Component {
 			updateText();
 			// Hide item that has been un-equipped
 			equipItem.getIcon().setVisible(false);
+			equipItem.getDurabilityIndicator().setVisible(false);
 		}
 	}
 	
@@ -384,11 +389,13 @@ public class EquipInventory extends Component {
 			if(item != null && !this.visible)
 			{
 				item.getComponentByType(EquipItem.class).getIcon().setVisible(false);
+				item.getComponentByType(EquipItem.class).getDurabilityIndicator().setVisible(false);
 			}
 			else if(item != null)
 			{
 				// Equipped, show item icon
 				item.getComponentByType(EquipItem.class).getIcon().setVisible(true);
+				item.getComponentByType(EquipItem.class).getDurabilityIndicator().setVisible(true);
 			}
 		}
 	}

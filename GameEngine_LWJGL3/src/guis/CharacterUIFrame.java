@@ -9,7 +9,7 @@ import fontUtils.FontStyle;
 import fontUtils.GUIText;
 import rendering.Loader;
 
-public class CharacterUIFrame extends UIFrame{
+public class CharacterUIFrame extends UIFrame {
 	
 	private final float MAX_HEALTH;
 	

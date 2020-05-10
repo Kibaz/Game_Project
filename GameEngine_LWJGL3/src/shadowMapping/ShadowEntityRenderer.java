@@ -9,8 +9,10 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Matrix4f;
 
+import animation.Bone;
 import components.AnimationComponent;
 import entities.Entity;
+import equip.EquipItem;
 import models.BaseModel;
 import models.TexturedModel;
 import rendering.AdvancedRenderer;
@@ -41,19 +43,8 @@ public class ShadowEntityRenderer {
 			List<Entity> batch = entities.get(model);
 			for(Entity entity: batch)
 			{
-				prepareEntity(entity);
-				AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
-				if(animationComponent != null)
-				{
-					shader.loadJointTransforms(animationComponent.getJointTransforms());
-					shader.loadAnimated(true);
-				}
-				else
-				{
-					shader.loadAnimated(false);
-				}	
-
-				GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
+				
+				renderEntity(entity,model);
 				
 			}
 			if(model.getTexture().isHasTransparency())
@@ -62,6 +53,40 @@ public class ShadowEntityRenderer {
 			}
 			unbindModel();
 		}
+	}
+	
+	private void renderEntity(Entity entity, TexturedModel model)
+	{
+		if(entity.hasComponent(EquipItem.class))
+		{
+			EquipItem item = entity.getComponentByType(EquipItem.class);
+			Entity parent = item.getParent();
+			if(parent != null)
+			{
+				prepareChildEntity(entity,parent,item);
+			}
+			else
+			{
+				prepareEntity(entity); // Got dropped
+			}
+		}
+		else
+		{
+			prepareEntity(entity);
+		}
+		
+		AnimationComponent animationComponent = entity.getComponentByType(AnimationComponent.class);
+		if(animationComponent != null)
+		{
+			shader.loadJointTransforms(animationComponent.getJointTransforms());
+			shader.loadAnimated(true);
+		}
+		else
+		{
+			shader.loadAnimated(false);
+		}	
+
+		GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 	}
 	
 	private void bindModel(BaseModel model)
@@ -90,6 +115,18 @@ public class ShadowEntityRenderer {
 		Matrix4f modelMatrix = Maths.createTransformationMatrix(entity.getPosition(), entity.getRotX(), entity.getRotY(), 
 				entity.getRotZ(), entity.getScale());
 		Matrix4f mvpMatrix = Matrix4f.mul(projectionViewMatrix, modelMatrix, null);
+		shader.loadMVPMatrix(mvpMatrix);
+	}
+	
+	private void prepareChildEntity(Entity entity,Entity parent,EquipItem item)
+	{
+		// Render item at location of parent and attachment point
+		AnimationComponent parentAnim = parent.getComponentByType(AnimationComponent.class);
+		Bone bone = parentAnim.findBone(item.getAttachPoint());
+		Matrix4f parentTransform = Maths.createTransformationMatrix(parent.getPosition(), 
+				parent.getRotX(),parent.getRotY(),parent.getRotZ(), parent.getScale());
+		Matrix4f boneWorldMatrix = Matrix4f.mul(parentTransform, bone.getFinalTransform(), null);
+		Matrix4f mvpMatrix = Matrix4f.mul(projectionViewMatrix, boneWorldMatrix, null);
 		shader.loadMVPMatrix(mvpMatrix);
 	}
 
