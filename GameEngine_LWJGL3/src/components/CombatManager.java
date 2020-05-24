@@ -21,7 +21,7 @@ public class CombatManager extends Component {
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		effectQueue = new HashMap<>();
 		inCombat = false;
 	}

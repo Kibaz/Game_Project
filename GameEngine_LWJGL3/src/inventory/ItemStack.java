@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import guis.GUI;
+import guis.GUITexture;
 
 public class ItemStack {
 	
 	private String itemName; // Name of the item being stacked
 	
+	// UI Components
 	private GUI itemIcon; // Icon to display for stack
 	
 	private int limit;

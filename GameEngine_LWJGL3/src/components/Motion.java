@@ -32,7 +32,7 @@ public class Motion extends Component {
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		runSpeed = 0;
 		walkSpeed = 0;
 		swimSpeed = 0;

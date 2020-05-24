@@ -11,6 +11,8 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.util.vector.Vector2f;
 
 import components.Component;
+import equip.EquipInventory;
+import equip.EquipItem;
 import fontRendering.TextController;
 import fontUtils.FontStyle;
 import fontUtils.GUIText;
@@ -57,6 +59,9 @@ public class Inventory extends Component {
 	private ItemStack selectedStack;
 	private GUIText selectedStackText;
 	
+	private ItemStack prevHoveredStack;
+	private ItemStack hoveredStack;
+	
 	public Inventory(int rows, int columns)
 	{
 		super("inventory");
@@ -69,7 +74,6 @@ public class Inventory extends Component {
 		this.guis = new ArrayList<>();
 		this.texts = new ArrayList<>();
 		this.visible = false;
-		this.init();
 	}
 	
 	// Attempts to add an item into the inventory
@@ -136,7 +140,6 @@ public class Inventory extends Component {
 				if(stack != null && stack.getItemName().equals(item.getItemName()))
 				{
 					stack.removeItem(item);
-					
 					if(stack.getCount() > 1)
 					{
 						stackTexts[i][j].setContent(String.valueOf(stack.getCount()));
@@ -144,6 +147,7 @@ public class Inventory extends Component {
 					else
 					{
 						stackTexts[i][j].setContent("");
+
 					}
 					
 					// Check if stack is empty
@@ -151,8 +155,11 @@ public class Inventory extends Component {
 					{
 						slots[i][j] = null; // Remove the stack
 						guis.remove(stack.getItemIcon()); // Remove Icon
+						stack.getItemIcon().setVisible(false);
 					}
-						
+					
+					TextController.removeText(stackTexts[i][j]);
+					updateText();
 				}
 			}
 		}
@@ -210,6 +217,7 @@ public class Inventory extends Component {
 		selectedStack.getItemIcon().setSelected(false);
 		selectedStack = null; // De-select stack
 		selectedStackText = null; // De-select stack text
+		updateText(); // Update text
 	}
 	
 	private void calculateTextPosition(GUIText text,int row, int column)
@@ -318,7 +326,12 @@ public class Inventory extends Component {
 		ItemStack temp = this.slots[gridPos1[0]][gridPos1[1]];
 		this.slots[gridPos1[0]][gridPos1[1]] = this.slots[gridPos2[0]][gridPos2[1]];
 		this.slots[gridPos2[0]][gridPos2[1]] = temp;
-
+		GUIText stackText1 = stackTexts[gridPos1[0]][gridPos1[1]];
+		GUIText stackText2 = stackTexts[gridPos2[0]][gridPos2[1]];
+		calculateTextPosition(stackText1,gridPos2[0],gridPos2[1]);
+		calculateTextPosition(stackText2,gridPos1[0],gridPos1[1]);
+		stackTexts[gridPos1[0]][gridPos1[1]] = stackText2;
+		stackTexts[gridPos2[0]][gridPos2[1]] = stackText1;
 	}
 	
 	private void swapStackText(int[] pos1, int[] pos2)
@@ -329,7 +342,7 @@ public class Inventory extends Component {
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		
 		float fontSize = 0.6f;
 		FontStyle font = new FontStyle(loader.loadFontTexture("res/arial.png"),new File("res/arial.fnt"));
@@ -389,10 +402,38 @@ public class Inventory extends Component {
 		{
 			checkSlotClicked();
 		}
+		checkStackRightClicked();
 		updateSelectedStack();
-		
+		checkItemHoverState();
 	}
 	
+	private void checkItemHoverState() {
+		
+		hoveredStack = null;
+		for(int i = 0; i < slots.length; i++)
+		{
+			for(int j = 0; j < slots[i].length; j++)
+			{
+				ItemStack stack = slots[i][j];
+				if(stack != null && stack.getItemIcon().isHovered() && visible)
+				{
+					hoveredStack = stack;
+				}
+			}
+		}
+		
+		if(hoveredStack != null && !hoveredStack.equals(prevHoveredStack))
+		{
+			ItemProfiler.build(hoveredStack.getStack().get(0), 
+					hoveredStack.getItemIcon().getGUITexture().getPosition(),
+					hoveredStack.getItemIcon().getGUITexture().getScale());
+			ItemProfiler.setProfiledItem(hoveredStack.getItemIcon());
+		}
+		
+		prevHoveredStack = hoveredStack;
+		
+	}
+
 	private void checkStackClicked()
 	{
 		for(int i = 0; i < slots.length; i++)
@@ -405,6 +446,28 @@ public class Inventory extends Component {
 					selectedStack = stack;
 					selectedStackText = stackTexts[i][j];
 					stack.getItemIcon().setSelected(true);
+				}
+			}
+		}
+	}
+	
+	private void checkStackRightClicked()
+	{
+		for(int i = 0; i < slots.length; i++)
+		{
+			for(int j = 0; j < slots[i].length; j++)
+			{
+				ItemStack stack = slots[i][j];
+				if(stack != null && stack.getItemIcon().isRightClicked())
+				{
+					Item item = stack.getStack().get((stack.getStack().size()-1));
+					if(item instanceof EquipItem && entity.hasComponent(EquipInventory.class))
+					{
+						EquipInventory equipInv = entity.getComponentByType(EquipInventory.class);
+						removeItem(item);
+						equipInv.equip(item.getEntity());
+						equipInv.getGuis().add(item.getIcon());
+					}
 				}
 			}
 		}
@@ -453,7 +516,14 @@ public class Inventory extends Component {
 	{
 		for(GUI gui: guis)
 		{
-			gui.setVisible(visible);
+			if(gui.isSelected()) // Selected gui
+			{
+				gui.setVisible(true);
+			}
+			else
+			{
+				gui.setVisible(visible);
+			}	
 		}
 	}
 	
@@ -478,6 +548,22 @@ public class Inventory extends Component {
 				for(int j = 0; j < slotTexts[i].length; j++)
 				{
 					showHideText(slots[i][j] == null,slotTexts[i][j]);
+				}
+			}
+		}
+		
+		for(int i = 0; i < stackTexts.length; i++)
+		{
+			for(int j = 0; j < stackTexts[i].length; j++)
+			{
+				GUIText text = stackTexts[i][j];
+				if(selectedStackText != null && selectedStackText.equals(text))
+				{
+					showHideText(true,text);
+				}
+				else
+				{
+					showHideText(visible,text);
 				}
 			}
 		}

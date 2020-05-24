@@ -25,6 +25,11 @@ public class Damage extends ItemStat {
 		info.setMinDamage(1); // Reset to default damage values
 		info.setMaxDamage(2); // Reset to default damage values
 	}
+
+	@Override
+	public String display() {
+		return min + " - " + max + " Damage";
+	}
 	
 
 }

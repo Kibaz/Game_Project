@@ -36,8 +36,6 @@ public class EquipItem extends Item {
 	
 	private String attachPoint; // Name of bone where item will be attached
 	
-	private List<ItemStat> stats;
-	
 	// Mark the slot which the item occupies in equip inventory
 	private EquipSlot equipSlot;
 	
@@ -46,7 +44,6 @@ public class EquipItem extends Item {
 	{
 		super(itemName,iconTexture);
 		this.equipSlot = equipSlot;
-		this.stats = new ArrayList<>();
 		this.attachPoint = attachPoint;
 		this.maxDurability = maxDurability;
 		this.durability = durability;
@@ -54,16 +51,7 @@ public class EquipItem extends Item {
 		this.durabilityIndicatorTexture = new GUITexture(durabilityTexture,new Vector2f(0,0),new Vector2f(maxDurabilityScale,0.2f));
 		this.durabilityIndicator = new GUI(this.durabilityIndicatorTexture);
 		durabilityIndicator.setVisible(false);
-	}
-	
-	public void addStat(ItemStat stat)
-	{
-		this.stats.add(stat);
-	}
-	
-	public void removeStat(ItemStat stat)
-	{
-		this.stats.remove(stat);
+		this.init();
 	}
 	
 	public void setDurabilityPosition(Vector2f position)
@@ -75,24 +63,10 @@ public class EquipItem extends Item {
 	{
 		this.durabilityIndicatorTexture.setScale(scale);
 	}
-	
-	public ItemStat getByName(String statName)
-	{
-		for(ItemStat stat: stats)
-		{
-			if(stat.getName().equals(statName))
-			{
-				return stat;
-			}
-		}
-		
-		return null;
-	}
 
 	@Override
-	protected void init() {
-		// TODO Auto-generated method stub
-		
+	public void init() {
+		super.init();
 	}
 
 	@Override
@@ -117,11 +91,8 @@ public class EquipItem extends Item {
 		// TODO Auto-generated method stub
 		
 	}
-
+	
 	// Getters and Setters
-	public List<ItemStat> getStats() {
-		return stats;
-	}
 
 	public EquipSlot getEquipSlot() {
 		return equipSlot;

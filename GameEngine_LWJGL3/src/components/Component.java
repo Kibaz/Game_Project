@@ -19,7 +19,7 @@ public abstract class Component {
 	
 	public Component(){}
 	
-	protected abstract void init();
+	public abstract void init();
 	
 	public abstract void update();
 	

@@ -40,11 +40,10 @@ public class QuestInterface extends Component{
 	{
 		super("quest_log");
 		this.quest = quest;
-		init();
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		visible = false;
 		float fontSize = 0.6f;
 		FontStyle font = new FontStyle(loader.loadFontTexture("res/arial.png"),new File("res/arial.fnt"));

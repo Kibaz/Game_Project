@@ -196,7 +196,7 @@ public class Maths {
 	
 	}
 	
-	private static Vector3f interpolate(Vector3f start, Vector3f end, float progression)
+	public static Vector3f interpolate(Vector3f start, Vector3f end, float progression)
 	{
 		float x = start.x + (end.x - start.x) * progression;
 		float y = start.y + (end.y - start.y) * progression;

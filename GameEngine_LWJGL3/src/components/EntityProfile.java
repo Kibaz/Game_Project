@@ -30,11 +30,10 @@ public class EntityProfile extends Component {
 	public EntityProfile()
 	{
 		super("entity_profile");
-		init();
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		profileDisplayTexture = new GUITexture(loader.loadTexture("res/ent_profile.png"),new Vector2f(0,0),new Vector2f(0.1f,0.1f));
 		profileDisplay = new GUI(profileDisplayTexture);
 		float fontSize = 0.45f;

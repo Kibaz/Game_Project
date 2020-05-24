@@ -137,6 +137,7 @@ public class Entity {
 	public void addComponent(Component component)
 	{
 		component.setEntity(this);
+		component.init(); // Initialise component
 		this.components.put(component.getName(), component);
 	}
 	

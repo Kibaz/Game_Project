@@ -43,12 +43,12 @@ public class HealthBarFrame extends Component {
 		this.uiPosition = uiPosition;
 		this.levelPosition = levelPosition;
 		this.healthPosition = healthPosition;
+		visible = false;
 		init();
 	}
 
 	@Override
-	protected void init() {
-		visible = false;
+	public void init() {
 		fontSize = 0.6f;
 		healthFrameTexture = new GUITexture(loader.loadTexture("res/basic_health_bar_frame.png"),new Vector2f(uiPosition),new Vector2f(0.2f,0.3f));
 		healthPoolTexture = new GUITexture(loader.loadTexture("res/basic_health_pool.png"), new Vector2f(uiPosition), new Vector2f(0.2f,0.3f));

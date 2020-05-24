@@ -6,8 +6,11 @@ import org.lwjgl.util.vector.Vector3f;
 
 import entities.Entity;
 import entities.Light;
+import inventory.Item;
 import models.BaseModel;
 import models.TexturedModel;
+import professions.Mineral;
+import professions.MiningNode;
 import rendering.Loader;
 import terrains.Terrain;
 import texturing.CausticTexture;
@@ -39,8 +42,12 @@ public class TigranStartZone extends Zone{
 		ModelTexture terrainTex = new ModelTexture(super.getLoader().loadTexture("res/Brown.png"));
 		terrainTex.setShineDamper(1);
 		terrainTex.setReflectivity(0);
-		super.getTerrains().add(new Terrain(0, 0,loader,terrainTex, "heightmap"));
-		super.getTerrains().add(new Terrain(1, 0,loader,terrainTex, "heightmap"));
+		Terrain terrain1 = new Terrain(0, 0,loader,terrainTex, "heightmap");
+		Terrain terrain2 = new Terrain(1, 0,loader,terrainTex, "heightmap");
+		super.getTerrains().add(terrain1);
+		super.getTerrains().add(terrain2);
+		World.addTerrain(terrain1);
+		World.addTerrain(terrain2);
 	}
 
 	@Override
@@ -87,13 +94,27 @@ public class TigranStartZone extends Zone{
 			super.getEntities().add(fernEnt);
 		}
 		
+		BaseModel[] copperVeinModels = StaticModelLoader.load("res/copper_vein.obj", loader);
+		TexturedModel copperVeinTexModel = new TexturedModel(copperVeinModels[0],new ModelTexture(loader.loadTexture("res/copper_vein.png")));
+		Entity copperVein = new Entity(copperVeinTexModel,new Vector3f(230,super.getTerrains().get(0).getTerrainHeight(230, 120),120),0,0,0,1);
+		copperVein.setStaticModel(true);
+		MiningNode copperNode = new MiningNode("Copper Vein","Copper",Mineral.MAX_CAPACITY);
+		copperVein.addComponent(copperNode);
+		
+		for(Item ore: copperNode.getOres())
+		{
+			super.getEntities().add(ore.getEntity());
+			World.addEntity(ore.getEntity());
+		}
+		
+		super.getEntities().add(copperVein);
 		super.getEntities().add(treeEnt);
 		super.getEntities().add(boxEnt);
 		super.getEntities().add(slopeEnt);
 		World.addEntity(treeEnt);
 		World.addEntity(boxEnt);
 		World.addEntity(slopeEnt);
-		
+		World.addEntity(copperVein);
 	}
 
 	@Override

@@ -1,16 +1,19 @@
 package inventory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.lwjgl.util.vector.Vector2f;
 
 import components.Component;
 import entities.Entity;
-import equip.EquipInventory;
-import equip.EquipItem;
+import equip.ItemStat;
 import guis.GUI;
 import guis.GUITexture;
 
 public class Item extends Component {
 	
+	// UI Components
 	private GUITexture iconTexture;
 	private GUI icon;
 	
@@ -19,6 +22,10 @@ public class Item extends Component {
 	private int stackLimit = 1; // By default - cannot stack items
 	
 	private Entity parent; // Entity item is bound to
+	
+	private List<GUI> guis;
+	
+	private List<ItemStat> stats; // Store item stats
 	
 	public Item(String itemName,int iconTexture)
 	{
@@ -29,12 +36,11 @@ public class Item extends Component {
 		icon.setVisible(false);
 		icon.setClickable(true);
 		icon.setFbo(true);
+		this.stats = new ArrayList<>();
 	}
 
 	@Override
-	protected void init() {
-		// TODO Auto-generated method stub
-		
+	public void init() {
 	}
 
 	@Override
@@ -52,6 +58,34 @@ public class Item extends Component {
 	public void cleanUp() {
 		// TODO Auto-generated method stub
 		
+	}
+	
+	public void addStat(ItemStat stat)
+	{
+		this.stats.add(stat);
+	}
+	
+	public void removeStat(ItemStat stat)
+	{
+		this.stats.remove(stat);
+	}
+	
+	public ItemStat getByName(String statName)
+	{
+		for(ItemStat stat: stats)
+		{
+			if(stat.getName().equals(statName))
+			{
+				return stat;
+			}
+		}
+		
+		return null;
+	}
+	
+	// Getters and Setters
+	public List<ItemStat> getStats() {
+		return stats;
 	}
 	
 	public void setIconPosition(Vector2f position)
@@ -100,5 +134,10 @@ public class Item extends Component {
 	public void setParent(Entity parent) {
 		this.parent = parent;
 	}
-
+	
+	public List<GUI> getGuis()
+	{
+		return guis;
+	}
+	
 }

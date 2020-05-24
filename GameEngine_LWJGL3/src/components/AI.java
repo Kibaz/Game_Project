@@ -10,6 +10,8 @@ import java.util.Random;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
+import animation.Animation;
+import animation.AnimationType;
 import combat.Ability;
 import entities.Entity;
 import equip.EquipInventory;
@@ -21,7 +23,7 @@ import utils.Maths;
 
 public class AI extends Component {
 	
-	private static final float TURN_SPEED = 160;
+	private static final float TURN_SPEED = 240;
 	private static final float RUN_SPEED = 23;
 	private static final float WALK_SPEED = 10;
 	private static final float GRAVITY = -50;
@@ -78,11 +80,10 @@ public class AI extends Component {
 		this.terrains = terrains;
 		this.enemies = enemies;
 		this.abilities = abilities;
-		init();
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		idleTime = 0;
 		idleTimeLimit = 0;
 		currentVelocity = new Vector2f(0,0);
@@ -142,7 +143,7 @@ public class AI extends Component {
 					combatManager.setInCombat(false);
 					targetToAttack = null;
 					QuestTracker.notifyTracker(info);
-					
+			
 					// Check if entity just died
 					if(prevState != State.DEAD)
 					{
@@ -177,7 +178,8 @@ public class AI extends Component {
 			target = new Vector2f(targetToAttack.getPosition().x,targetToAttack.getPosition().z);
 			currentSpeed = RUN_SPEED;
 			alertToEnemies();
-			if(targetToAttack != null && Maths.distance(entity.getPosition(), targetToAttack.getPosition()) <= DIST_FROM_PLAYER){
+			if(targetToAttack != null && Maths.distance(entity.getPosition(), 
+					targetToAttack.getPosition()) <= DIST_FROM_PLAYER){
 				state = State.ATTACK;
 			}
 			
@@ -204,6 +206,10 @@ public class AI extends Component {
 					state = State.CHASE;
 				}
 			}
+			
+			
+			target = new Vector2f(targetToAttack.getPosition().x,targetToAttack.getPosition().z);
+			turn();
 			playAnimation("attack");
 			attack();
 		}
@@ -246,11 +252,31 @@ public class AI extends Component {
 		else if(state == State.DEAD)
 		{
 			target = null;
-			// Play death animation initially (when state just changed)
+			// Play death animation initially
+			playAnimation("death");
 		}
 		else if(state == State.ATTACKING)
 		{
 			// Do nothing in this state
+		}
+	}
+	
+	private void turn()
+	{
+		Vector2f currPos = new Vector2f(entity.getPosition().x,entity.getPosition().z);
+		Vector2f desired = Vector2f.sub(target, currPos, null);
+		
+		float angle = Maths.findVectorAngle(desired);
+		float diffAngles = (entity.getRotY() - angle + 180) % 360 - 180;
+		diffAngles = diffAngles < -180 ? diffAngles + 360 : diffAngles;
+		
+		if((int) diffAngles > 0)
+		{
+			entity.increaseRotation(0, -TURN_SPEED * Window.getFrameTime(), 0);
+		}
+		else if((int) diffAngles < 0)
+		{
+			entity.increaseRotation(0, TURN_SPEED * Window.getFrameTime(), 0);
 		}
 	}
 	
@@ -454,6 +480,7 @@ public class AI extends Component {
 		{
 			return new Vector2f(0,0);
 		}
+		
 		Vector2f currPos = new Vector2f(entity.getPosition().x,entity.getPosition().z);
 		Vector2f desired = Vector2f.sub(target, currPos, null);
 		

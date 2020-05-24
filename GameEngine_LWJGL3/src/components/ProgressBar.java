@@ -39,7 +39,7 @@ public class ProgressBar extends Component {
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		frameTexture = new GUITexture(loader.loadTexture("res/basic_health_bar_frame.png"), new Vector2f(uiPosition),new Vector2f(1,0.3f));
 		poolTexture = new GUITexture(loader.loadTexture("res/basic_exp_pool.png"),new Vector2f(uiPosition),new Vector2f(1,0.3f));
 		maxScale = poolTexture.getScale().x;

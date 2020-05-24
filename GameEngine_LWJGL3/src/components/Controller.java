@@ -19,7 +19,7 @@ public class Controller extends Component{
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		
 	}
 

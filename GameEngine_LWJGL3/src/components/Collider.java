@@ -32,7 +32,7 @@ public class Collider extends Component{
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		collTest = new CollisionTest();
 	}
 

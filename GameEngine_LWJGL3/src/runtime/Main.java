@@ -17,6 +17,7 @@ import org.lwjgl.util.vector.Vector4f;
 
 import animation.Animation;
 import animation.AnimationLoader;
+import animation.AnimationType;
 import animation.Bone;
 import buffers.FBO;
 import combat.Ability;
@@ -58,6 +59,8 @@ import guis.HUDRenderer;
 import inputs.MousePicker;
 import interfaceObjects.Quest;
 import inventory.Inventory;
+import inventory.Item;
+import inventory.ItemProfiler;
 import models.BaseModel;
 import models.TexturedModel;
 import networking.Client;
@@ -67,6 +70,7 @@ import objectives.Task;
 import particles.ParticleManager;
 import physics.SAP;
 import postProcessing.PostProcessor;
+import professions.NodeBank;
 import rendering.AdvancedRenderer;
 import rendering.Loader;
 import rendering.Window;
@@ -110,6 +114,8 @@ public class Main {
 		
 		QuestTracker.init();
 		
+		NodeBank.init(loader);
+		
 		// Initialise and create zones
 		// Add game objects stored in each zone to prepare for rendering
 		TigranStartZone tigranStartZone = new TigranStartZone(loader);
@@ -124,8 +130,8 @@ public class Main {
 		testButton.setClickable(true);
 		guis.add(testButton);
 		
-		Entity player = AnimationLoader.loadAnimatedFile("res/model.dae","res/Character Texture.png",new Vector3f(100,
-				tigranStartZone.getTerrains().get(0).getTerrainHeight(100, 90),90),0,0,0,1,loader);
+		Entity player = AnimationLoader.loadAnimatedFile("res/model.dae","res/Character Texture.png",new Vector3f(200,
+				tigranStartZone.getTerrains().get(0).getTerrainHeight(200, 100),100),0,0,0,1,loader);
 		
 		
 		// Set up player camera - 3rd person camera
@@ -178,10 +184,11 @@ public class Main {
 			Entity armourTest = new Entity(armourTestMod,new Vector3f(170,
 					tigranStartZone.getTerrains().get(0).getTerrainHeight(170, 150),150),-90,0,0,1);
 			armourTest.setClickable(true);
-			EquipItem testEquip = new EquipItem("Test",35,35,"Chest",EquipSlot.CHEST,
+			EquipItem testEquip = new EquipItem("Crappy Chest",35,35,"Chest",EquipSlot.CHEST,
 					loader.loadTexture("res/chest_piece.png",false),durabilityTexture);
 			guis.add(testEquip.getDurabilityIndicator());
 			testEquip.addStat(new Armour(10));
+			testEquip.addStat(new Health(3));
 			testEquip.setStackLimit(10);
 			armourTest.addComponent(testEquip);
 			entities.add(armourTest);
@@ -230,7 +237,9 @@ public class Main {
 		Map<String,Ability> redcapAbilities = new HashMap<>();
 		AI redcapAi = new AI("test_ai",entities,terrains,enemies,redcapAbilities);
 		redcapInfo.setHostile(true);
-		redcap.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
+		AnimationComponent redCapAnimComp = redcap.getComponentByType(AnimationComponent.class);
+		redCapAnimComp.setCurrentAnimation("walk");
+		redCapAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
 		redcap.addComponent(redcapInfo);
 		redcap.addComponent(redcapAi);
 		redcap.addComponent(new CombatManager("ai_combat_manager"));
@@ -255,42 +264,54 @@ public class Main {
 		Entity redcapBag = AnimationLoader.loadAnimatedFile("res/redcap_bag.fbx","res/redcap.png",new Vector3f(300,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(300, 100),100),0,0,0,1,loader);
 		redcapBag.getAABB().resetBox(redcapBag.getPosition());
-		redcapBag.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
 		redcap.addItem(redcapBag);
 		entities.add(redcapBag);
-		
+		AnimationComponent redCapBagAnimComp = redcapBag.getComponentByType(AnimationComponent.class);
+		redCapBagAnimComp.setCurrentAnimation("walk");
+		redCapBagAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
+
 		Entity redcapEyeR = AnimationLoader.loadAnimatedFile("res/redcap_eye_r.fbx","res/redcap.png",new Vector3f(300,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(300, 100),100),0,0,0,1,loader);
 		redcapEyeR.getAABB().resetBox(redcapEyeR.getPosition());
-		redcapEyeR.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
+		AnimationComponent redCapEyeRAnimComp = redcapEyeR.getComponentByType(AnimationComponent.class);
+		redCapEyeRAnimComp.setCurrentAnimation("walk");
+		redCapEyeRAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
 		redcap.addItem(redcapEyeR);
 		entities.add(redcapEyeR);
 		
 		Entity redcapEyeL = AnimationLoader.loadAnimatedFile("res/redcap_eye_l.fbx","res/redcap.png",new Vector3f(300,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(300, 100),100),0,0,0,1,loader);
 		redcapEyeL.getAABB().resetBox(redcapEyeL.getPosition());
-		redcapEyeL.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
+		AnimationComponent redCapEyeLAnimComp = redcapEyeL.getComponentByType(AnimationComponent.class);
+		redCapEyeLAnimComp.setCurrentAnimation("walk");
+		redCapEyeLAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
 		redcap.addItem(redcapEyeL);
 		entities.add(redcapEyeL);
 		
 		Entity redcapTeeth = AnimationLoader.loadAnimatedFile("res/redcap_teeth.fbx","res/redcap.png",new Vector3f(300,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(300, 100),100),0,0,0,1,loader);
 		redcapTeeth.getAABB().resetBox(redcapTeeth.getPosition());
-		redcapTeeth.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
+		AnimationComponent redCapTeethAnimComp = redcapTeeth.getComponentByType(AnimationComponent.class);
+		redCapTeethAnimComp.setCurrentAnimation("walk");
+		redCapTeethAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
 		redcap.addItem(redcapTeeth);
 		entities.add(redcapTeeth);
 		
 		Entity redcapHat = AnimationLoader.loadAnimatedFile("res/redcap_hat.fbx","res/redcap.png",new Vector3f(300,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(300, 100),100),0,0,0,1,loader);
 		redcapHat.getAABB().resetBox(redcapHat.getPosition());
-		redcapHat.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
+		AnimationComponent redCapHatAnimComp = redcapHat.getComponentByType(AnimationComponent.class);
+		redCapHatAnimComp.setCurrentAnimation("walk");
+		redCapHatAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
 		redcap.addItem(redcapHat);
 		entities.add(redcapHat);
 		
 		Entity redcapEarRing = AnimationLoader.loadAnimatedFile("res/redcap_ear_ring.fbx","res/redcap.png",new Vector3f(300,
 				tigranStartZone.getTerrains().get(0).getTerrainHeight(300, 100),100),0,0,0,1,loader);
 		redcapEarRing.getAABB().resetBox(redcapEarRing.getPosition());
-		redcapEarRing.getComponentByType(AnimationComponent.class).setCurrentAnimation("walk");
+		AnimationComponent redCapEarAnimComp = redcapEarRing.getComponentByType(AnimationComponent.class);
+		redCapEarAnimComp.setCurrentAnimation("walk");
+		redCapEarAnimComp.getAnimations().get("death").setType(AnimationType.DEATH);
 		redcap.addItem(redcapEarRing);
 		entities.add(redcapEarRing);
 		
@@ -365,6 +386,9 @@ public class Main {
 		displayCamera.setPitch(0);
 		EquipDisplayRenderer playerEquipDisplay = new EquipDisplayRenderer(renderer.getProjectionMatrix(),playerEquip);
 		
+		// Initialise item profiler
+		ItemProfiler.init(loader,guis);
+		
 		// Main game loop
 		while(!Window.closed())
 		{
@@ -417,10 +441,12 @@ public class Main {
 				QuestInterface questInterface = picker.getCurrentHoveredEntity().getComponentByType(QuestInterface.class);
 				if(questInterface != null) questInterface.setVisible(true);
 				if(healthFrame != null) healthFrame.setVisible(true);
-				if(picker.getCurrentHoveredEntity().hasComponent(EquipItem.class))
+				if(picker.getCurrentHoveredEntity().hasComponent(EquipItem.class) ||picker.getCurrentHoveredEntity().hasComponent(Item.class)  )
 				{
-					picker.getCurrentHoveredEntity().getComponentByType(EquipItem.class).setAttachPoint("Hand_L");
-					inventory.addItem(picker.getCurrentHoveredEntity().getComponentByType(EquipItem.class));
+					Item item = (picker.getCurrentHoveredEntity().hasComponent(EquipItem.class)) ? 
+							picker.getCurrentHoveredEntity().getComponentByType(EquipItem.class) :
+								picker.getCurrentHoveredEntity().getComponentByType(Item.class);
+					inventory.addItem(item);
 					picker.setCurrentHoveredEntity(null);
 					picker.setPreviousHoveredEntity(null);
 				}
@@ -445,6 +471,8 @@ public class Main {
 			
 			// Update animated text
 			TextController.updateTexts();
+			
+			ItemProfiler.update();
 			
 			renderer.renderShadowMap(entities, tigranStartZone.getSun());
 			GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
@@ -493,7 +521,6 @@ public class Main {
 			playerEquipDisplay.render(displayCamera,lights);
 			playerEquip.getFBO().unbindFrameBuffer();
 			
-			
 			multiSampleFbo.bindFrameBuffer();
 			renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0,-1,0,0));
 			waterRenderer.render(water, camera, tigranStartZone.getSun(), renderer.getNearPlane(), renderer.getFarPlane());
@@ -505,6 +532,14 @@ public class Main {
 			hudRenderer.render(huds, camera);
 			
 			for(GUI gui: inventory.getGuis())
+			{
+				if(!guis.contains(gui))
+				{
+					guis.add(gui);
+				}
+			}
+			
+			for(GUI gui: playerEquip.getGuis())
 			{
 				if(!guis.contains(gui))
 				{

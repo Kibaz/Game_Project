@@ -16,7 +16,7 @@ public class FloatingHealthBar extends Component {
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		this.healthFrame = new HUD(loader.loadTexture("res/basic_health_bar_frame.png"), new Vector3f(0,0,0), new Vector3f(4,4,4),0);
 		this.healthPool = new HUD(loader.loadTexture("res/basic_health_pool.png"), new Vector3f(0,0,0), new Vector3f(4,4,4), 0);
 		this.healthPool.setAsHealthPool();

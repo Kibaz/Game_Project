@@ -34,14 +34,13 @@ public class EntityInformation extends Component {
 		this.health = health;
 		this.maxHealth = maxHealth;
 		this.level = level;
-		init();
+		this.hostile = false;
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		experience = 0;
 		experienceCap = 100;
-		hostile = false;
 	}
 
 	@Override

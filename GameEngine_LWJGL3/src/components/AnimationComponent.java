@@ -9,6 +9,7 @@ import org.lwjgl.util.vector.Quaternion;
 import org.lwjgl.util.vector.Vector3f;
 
 import animation.Animation;
+import animation.AnimationType;
 import animation.Bone;
 import animation.Node;
 import animation.PositionTransform;
@@ -32,21 +33,32 @@ public class AnimationComponent extends Component{
 	
 	private float time;
 	
+	private float timeInTicks;
+	
 	public AnimationComponent(String name)
 	{
 		super(name);
-		init();
-	}
-
-	@Override
-	protected void init() {
 		animations = new HashMap<>();
 		currentAnimation = null;
 	}
 
 	@Override
+	public void init() {
+
+	}
+
+	@Override
 	public void update() {
-		time += Window.getFrameTime();
+		float frameTime = Window.getFrameTime();
+		time += frameTime; // Increment time each frame
+		
+		float maxTime = calculateMaxTime();
+		if(currentAnimation.getType() == AnimationType.DEATH && time > maxTime)
+		{
+			time = maxTime - 0.0000001f;
+		}
+		
+		// Calculate join transforms based on current interval of time
 		calculateJointTransforms();
 	}
 
@@ -61,11 +73,17 @@ public class AnimationComponent extends Component{
 		
 	}
 	
+	private float calculateMaxTime()
+	{
+		float ticksPerSecond = (float) (currentAnimation.getTicksPerSecond() != 0 ? currentAnimation.getTicksPerSecond() : 25.0f);
+		return (float) currentAnimation.getDuration() / ticksPerSecond;
+	}
+	
 	private void calculateJointTransforms()
 	{
 		Matrix4f identity = new Matrix4f();
 		float ticksPerSecond = (float) (currentAnimation.getTicksPerSecond() != 0 ? currentAnimation.getTicksPerSecond() : 25.0f);
-		float timeInTicks = time * ticksPerSecond;
+		timeInTicks = time * ticksPerSecond;
 		if(timeInTicks > currentAnimation.getDuration()) {
 			time = 0;
 		}
@@ -290,6 +308,11 @@ public class AnimationComponent extends Component{
 	
 	public void setCurrentAnimation(String name)
 	{
+		if(currentAnimation != null && !currentAnimation.getName().equals(name) && 
+				animations.get(name).getType() == AnimationType.DEATH)
+		{
+			time = 0;
+		}
 		currentAnimation = animations.get(name);
 	}
 
@@ -297,11 +320,19 @@ public class AnimationComponent extends Component{
 		return time;
 	}
 	
+	public void setTime(float time)
+	{
+		this.time = time;
+	}
+	
+	public float getTimeInTicks() {
+		return timeInTicks;
+	}
+
 	public void submitAnimation(String name, Animation animation)
 	{
 		animations.put(name, animation);
 	}
-	
 	
 
 }

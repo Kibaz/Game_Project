@@ -20,6 +20,11 @@ public class Armour extends ItemStat{
 	protected void remove(EntityInformation info) {
 		info.modifyArmour(-value);
 	}
+	
+	@Override
+	public String display() {
+		return ((value > 0) ? "+" : "-") + value + " Armour";
+	}
 
 	public int getValue() {
 		return value;

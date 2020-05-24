@@ -19,6 +19,9 @@ import fontUtils.FontStyle;
 import fontUtils.GUIText;
 import guis.GUI;
 import guis.GUITexture;
+import inventory.Inventory;
+import inventory.Item;
+import inventory.ItemProfiler;
 import rendering.EntityRenderer;
 import rendering.Window;
 
@@ -108,6 +111,9 @@ public class EquipInventory extends Component {
 	
 	private boolean renderUI;
 	
+	private Item prevHoveredItem;
+	private Item hoveredItem;
+	
 	public EquipInventory(boolean renderUI)
 	{
 		super("equipInventory");
@@ -119,7 +125,6 @@ public class EquipInventory extends Component {
 		{
 			fbo = new EntityFBO();
 		}
-		this.init();
 	}
 	
 	public void equip(Entity entity)
@@ -195,12 +200,13 @@ public class EquipInventory extends Component {
 		}
 		// Remove from inventory
 		inventory.remove(equipItem.getEquipSlot(), entity);
-		equipItem.setParent(null);
+		//equipItem.setParent(null); No longer necessary now that inventory exists
 		if(renderUI) {
 			updateText();
 			// Hide item that has been un-equipped
 			equipItem.getIcon().setVisible(false);
 			equipItem.getDurabilityIndicator().setVisible(false);
+			guis.remove(equipItem.getIcon()); // Remove icon so that it's not set as visible
 		}
 	}
 	
@@ -215,7 +221,7 @@ public class EquipInventory extends Component {
 	}
 
 	@Override
-	protected void init() {
+	public void init() {
 		this.visible = false;
 		
 		if(!renderUI) return;
@@ -360,6 +366,53 @@ public class EquipInventory extends Component {
 	public void update() {
 		checkKeyState();
 		updateGuis();
+		checkItemRightClicked();
+		checkItemHoverState();
+	}
+	
+	
+	private void checkItemHoverState()
+	{
+		if(!renderUI) return;
+		
+		hoveredItem = null;
+		for(Entry<EquipSlot,Entity> entry: inventory.entrySet())
+		{
+			Entity itemEnt = entry.getValue();
+			Item item = itemEnt.getComponentByType(EquipItem.class);
+			if(item.getIcon().isHovered() && visible)
+			{
+				hoveredItem = item;
+			}
+		}
+		
+		if(hoveredItem != null && !hoveredItem.equals(prevHoveredItem))
+		{
+			ItemProfiler.build(hoveredItem, hoveredItem.getIconTexture().getPosition(),
+					hoveredItem.getIconTexture().getScale());
+			ItemProfiler.setProfiledItem(hoveredItem.getIcon());
+		}
+		
+		prevHoveredItem = hoveredItem;
+	}
+	
+	private void checkItemRightClicked()
+	{
+		for(Entry<EquipSlot,Entity> entry: inventory.entrySet())
+		{
+			Entity itemEnt = entry.getValue();
+			if(itemEnt != null)
+			{
+				Item item = itemEnt.getComponentByType(EquipItem.class);
+				if(item.getIcon().isRightClicked())
+				{
+					item.getParent().getComponentByType(Inventory.class).addItem(item);
+					unequip(itemEnt);
+				}
+				
+			}
+			
+		}
 	}
 	
 	private void checkKeyState()

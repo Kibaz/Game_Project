@@ -28,6 +28,8 @@ public abstract class ItemStat {
 	
 	// Abstract method to remove the modifier from the entity
 	protected abstract void remove(EntityInformation info);
+	
+	public abstract String display();
 
 	public String getName() {
 		return name;

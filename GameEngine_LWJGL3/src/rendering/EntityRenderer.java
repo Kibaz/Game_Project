@@ -188,10 +188,14 @@ public class EntityRenderer {
 						EntityInformation info = entity.getComponentByType(EntityInformation.class);
 						stencilShader.loadHostility(info.isHostile());
 					}
+					else
+					{
+						// Tell GPU if the entity is an item
+						stencilShader.loadHostility(false);
+					}
 					
-					// Tell GPU if the entity is an item
-					stencilShader.loadIsItem(entity.hasComponent(EquipItem.class));
-					
+					stencilShader.loadIsItem(entity.hasComponent(EquipItem.class) || entity.hasComponent(Item.class));
+
 					GL11.glDrawElements(GL11.GL_TRIANGLES, model.getBaseModel().getVertCount(), GL11.GL_UNSIGNED_INT, 0);
 				}
 

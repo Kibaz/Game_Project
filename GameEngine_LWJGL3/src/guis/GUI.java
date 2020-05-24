@@ -13,6 +13,7 @@ public class GUI{
 	private boolean selected;
 	
 	private boolean clicked;
+	private boolean rightClicked;
 	private boolean fbo;
 	
 	public GUI(GUITexture texture)
@@ -21,6 +22,7 @@ public class GUI{
 		this.visible = true;
 		this.clicked = false;
 		this.selected = false;
+		this.rightClicked = false;
 		this.fbo = false;
 	}
 
@@ -77,6 +79,14 @@ public class GUI{
 
 	public void setFbo(boolean fbo) {
 		this.fbo = fbo;
+	}
+
+	public boolean isRightClicked() {
+		return rightClicked;
+	}
+
+	public void setRightClicked(boolean clicked) {
+		this.rightClicked = clicked;	
 	}
 	
 	

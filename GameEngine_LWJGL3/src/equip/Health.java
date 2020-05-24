@@ -21,6 +21,11 @@ public class Health extends ItemStat {
 	protected void remove(EntityInformation info) {
 		info.modifyMaxHealth(-value);
 	}
+	
+	@Override
+	public String display() {
+		return ((value > 0) ? "+" : "-") + value + " Health";
+	}
 
 	public int getValue() {
 		return value;

@@ -161,6 +161,30 @@ public class MousePicker {
 			}
 		}
 		
+		if(rightMouseClicked())
+		{
+			for(GUI gui: guis)
+			{
+				if(gui.isClickable())
+				{
+					if(gui.isHovered() && gui.isVisible())
+					{
+						gui.setRightClicked(true);
+					}
+				}
+			}
+		}
+		else
+		{
+			for(GUI gui: guis)
+			{
+				if(gui.isClickable())
+				{
+					gui.setRightClicked(false);
+				}
+			}
+		}
+		
 		if(leftMouseClicked())
 		{
 			for(Ability ability: abilities)
@@ -190,6 +214,7 @@ public class MousePicker {
 				{
 					if(entity.isHovered())
 					{
+						entity.setClicked(true);
 						if(currentHoveredEntity != null)
 						{
 							if(currentHoveredEntity.equals(entity))
@@ -227,6 +252,14 @@ public class MousePicker {
 				if(gui.isClickable())
 				{
 					gui.setClicked(false);
+				}
+			}
+			
+			for(Entity entity: World.worldObjects)
+			{
+				if(entity.isClickable())
+				{
+					entity.setClicked(false);
 				}
 			}
 		}

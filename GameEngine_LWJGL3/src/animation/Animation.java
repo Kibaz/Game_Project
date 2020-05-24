@@ -12,12 +12,15 @@ public class Animation {
 	
 	private Node rootNode;
 	
+	private AnimationType type;
+	
 	public Animation(String name,double ticksPerSecond,double duration, Node rootNode)
 	{
 		this.name = name;
 		this.duration = duration;
 		this.rootNode = rootNode;
 		this.ticksPerSecond = ticksPerSecond;
+		this.type = AnimationType.LOOP; // Loop by default
 	}
 
 	public double getDuration() {
@@ -34,6 +37,16 @@ public class Animation {
 
 	public double getTicksPerSecond() {
 		return ticksPerSecond;
+	}
+	
+	public AnimationType getType()
+	{
+		return type;
+	}
+	
+	public void setType(AnimationType type)
+	{
+		this.type = type;
 	}
 	
 	
